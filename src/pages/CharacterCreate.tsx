@@ -26,6 +26,15 @@ export default function CharacterCreate() {
   const selectedClass = SRD_CLASSES.find(c => c.name === className);
 
   const handleCreate = async () => {
+    // Apply racial ability bonuses on top of base scores
+    const finalAbilities = { ...abilities };
+    if (selectedRace?.abilityBonuses) {
+      for (const [key, bonus] of Object.entries(selectedRace.abilityBonuses)) {
+        const ab = key as AbilityName;
+        finalAbilities[ab] = Math.min(30, (finalAbilities[ab] ?? 10) + (bonus as number));
+      }
+    }
+
     const char = createDefaultCharacter({
       name: name || 'Unnamed Hero',
       playerName,
@@ -40,7 +49,7 @@ export default function CharacterCreate() {
       }],
       background,
       alignment,
-      abilities,
+      abilities: finalAbilities,
       speed: selectedRace?.speed ?? 30,
       savingThrowProficiencies: ([...(selectedClass?.savingThrows ?? [])]) as AbilityName[],
       spellcastingAbility: selectedClass?.spellcastingAbility ?? '',
@@ -186,11 +195,15 @@ export default function CharacterCreate() {
                 <p><span className="text-muted-foreground">Alignment:</span> {alignment || 'None'}</p>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
-                {ABILITY_NAMES.map(ab => (
-                  <span key={ab} className="px-2 py-1 rounded bg-secondary text-xs font-medium">
-                    {ab.toUpperCase()} {abilities[ab]}
-                  </span>
-                ))}
+                {ABILITY_NAMES.map(ab => {
+                  const bonus = (selectedRace?.abilityBonuses as any)?.[ab] || 0;
+                  const final = Math.min(30, abilities[ab] + bonus);
+                  return (
+                    <span key={ab} className="px-2 py-1 rounded bg-secondary text-xs font-medium">
+                      {ab.toUpperCase()} {final}{bonus > 0 ? <span className="text-primary"> (+{bonus})</span> : ''}
+                    </span>
+                  );
+                })}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">You can edit all details after creation.</p>

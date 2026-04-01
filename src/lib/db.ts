@@ -95,15 +95,41 @@ export async function exportCharacter(id: string): Promise<string> {
   return JSON.stringify({ character: char, image: img }, null, 2);
 }
 
+function validateCharacterShape(data: unknown): data is Character {
+  if (!data || typeof data !== 'object') return false;
+  const c = data as Record<string, unknown>;
+  return (
+    typeof c.name === 'string' &&
+    typeof c.id === 'string' &&
+    typeof c.abilities === 'object' && c.abilities !== null &&
+    Array.isArray(c.classes) &&
+    Array.isArray(c.skills) &&
+    typeof c.hpMax === 'number' &&
+    typeof c.hpCurrent === 'number'
+  );
+}
+
 export async function importCharacter(json: string): Promise<Character> {
-  const data = JSON.parse(json);
-  const char: Character = data.character;
+  let data: unknown;
+  try {
+    data = JSON.parse(json);
+  } catch {
+    throw new Error('Invalid JSON file.');
+  }
+
+  const raw = (data as any)?.character ?? data;
+  if (!validateCharacterShape(raw)) {
+    throw new Error('File does not contain a valid character. Missing required fields.');
+  }
+
+  const char: Character = { ...raw as Character };
   char.id = crypto.randomUUID();
   char.createdAt = new Date().toISOString();
   char.updatedAt = new Date().toISOString();
   await saveCharacter(char);
-  if (data.image) {
-    await saveCharacterImage(char.id, data.image);
+  const image = (data as any)?.image;
+  if (image && typeof image === 'string') {
+    await saveCharacterImage(char.id, image);
   }
   return char;
 }

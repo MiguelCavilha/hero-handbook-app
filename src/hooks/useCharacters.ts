@@ -8,9 +8,14 @@ export function useCharacters() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const chars = await getAllCharacters();
-    setCharacters(chars);
-    setLoading(false);
+    try {
+      const chars = await getAllCharacters();
+      setCharacters(chars);
+    } catch (e) {
+      console.error('Failed to load characters:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);

@@ -28,10 +28,12 @@ export function useCharacter(id: string | undefined) {
       const next = typeof updates === 'function' ? updates(prev) : { ...prev, ...updates };
       const calculated = applyAutoCalculations(next);
 
-      // Debounced auto-save
+      // Debounced auto-save — surface errors via console (non-blocking)
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
-        saveCharacter(calculated).then(() => setLastSaved(new Date()));
+        saveCharacter(calculated)
+          .then(() => setLastSaved(new Date()))
+          .catch(e => console.error('Auto-save failed:', e));
       }, 500);
 
       return calculated;

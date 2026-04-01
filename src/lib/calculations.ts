@@ -52,12 +52,22 @@ export function calcArmorClass(char: Character): number {
 export function calcHpMax(char: Character): number {
   if (char.manualOverrides['hpMax']) return char.hpMax;
   const conMod = abilityModifier(char.abilities.con);
-  const lvl = totalLevel(char);
   if (char.classes.length === 0) return 10 + conMod;
+
+  // First level uses max die of primary class
   const primary = char.classes[0];
-  const firstLevelHp = primary.hitDieSize + conMod;
-  const avgPerLevel = Math.floor(primary.hitDieSize / 2) + 1 + conMod;
-  return firstLevelHp + avgPerLevel * (lvl - 1);
+  let total = primary.hitDieSize + conMod;
+
+  // Remaining levels: each class contributes avg per level for its own hit die
+  let firstLevelCounted = false;
+  for (const cls of char.classes) {
+    const avg = Math.floor(cls.hitDieSize / 2) + 1 + conMod;
+    const levelsToCount = firstLevelCounted ? cls.level : cls.level - 1;
+    total += avg * levelsToCount;
+    firstLevelCounted = true;
+  }
+
+  return total;
 }
 
 export function calcSpellSaveDC(char: Character): number {

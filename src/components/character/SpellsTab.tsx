@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Character, AppMode, SpellEntry } from '@/lib/types';
 import { calcSpellSaveDC, calcSpellAttackBonus, formatModifier } from '@/lib/calculations';
 import { ABILITY_LABELS, ABILITY_NAMES } from '@/lib/types';
-import { Plus, Trash2, Search, Star } from 'lucide-react';
+import { Plus, Trash2, Search } from 'lucide-react';
 
 interface Props {
   character: Character;
@@ -14,6 +14,7 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
   const [search, setSearch] = useState('');
   const [filterLevel, setFilterLevel] = useState<number | null>(null);
   const [showAddSpell, setShowAddSpell] = useState(false);
+  const [showAddSlot, setShowAddSlot] = useState(false);
 
   const dc = calcSpellSaveDC(character);
   const atk = calcSpellAttackBonus(character);
@@ -48,14 +49,19 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
     }));
   };
 
+  // Cap used at slot.max to prevent negative available slots
   const useSlot = (level: number) => {
-    updateCharacter(prev => ({
-      ...prev,
-      spellSlots: {
-        ...prev.spellSlots,
-        [level]: { ...prev.spellSlots[level], used: (prev.spellSlots[level]?.used || 0) + 1 },
-      },
-    }));
+    updateCharacter(prev => {
+      const slot = prev.spellSlots[level];
+      if (!slot || slot.used >= slot.max) return prev;
+      return {
+        ...prev,
+        spellSlots: {
+          ...prev.spellSlots,
+          [level]: { ...slot, used: slot.used + 1 },
+        },
+      };
+    });
   };
 
   const restoreSlot = (level: number) => {
@@ -66,6 +72,22 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
         [level]: { ...prev.spellSlots[level], used: Math.max(0, (prev.spellSlots[level]?.used || 0) - 1) },
       },
     }));
+  };
+
+  const addSlotLevel = (level: number, max: number) => {
+    updateCharacter(prev => ({
+      ...prev,
+      spellSlots: { ...prev.spellSlots, [level]: { max, used: 0 } },
+    }));
+    setShowAddSlot(false);
+  };
+
+  const removeSlotLevel = (level: number) => {
+    updateCharacter(prev => {
+      const slots = { ...prev.spellSlots };
+      delete slots[level];
+      return { ...prev, spellSlots: slots };
+    });
   };
 
   return (
@@ -108,7 +130,7 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
       </section>
 
       {/* Spell slots */}
-      {Object.keys(character.spellSlots).length > 0 && (
+      {(Object.keys(character.spellSlots).length > 0 || mode === 'edit') && (
         <section>
           <h3 className="section-title">Spell Slots</h3>
           <div className="flex flex-wrap gap-2">
@@ -118,33 +140,38 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
                 <div key={level} className="border rounded-lg p-2 bg-card text-center min-w-[4rem]">
                   <p className="text-[0.6rem] uppercase tracking-wider text-muted-foreground font-semibold">Level {level}</p>
                   <div className="flex items-center justify-center gap-1 mt-1">
-                    <button onClick={() => restoreSlot(Number(level))} className="w-5 h-5 rounded bg-primary/20 text-primary text-xs font-bold">+</button>
+                    <button
+                      onClick={() => restoreSlot(Number(level))}
+                      disabled={slot.used === 0}
+                      className="w-5 h-5 rounded bg-primary/20 text-primary text-xs font-bold disabled:opacity-40"
+                    >+</button>
                     <span className="text-sm font-bold">{slot.max - slot.used}/{slot.max}</span>
-                    <button onClick={() => useSlot(Number(level))} className="w-5 h-5 rounded bg-destructive/20 text-destructive text-xs font-bold">−</button>
+                    <button
+                      onClick={() => useSlot(Number(level))}
+                      disabled={slot.used >= slot.max}
+                      className="w-5 h-5 rounded bg-destructive/20 text-destructive text-xs font-bold disabled:opacity-40"
+                    >−</button>
                   </div>
+                  {mode === 'edit' && (
+                    <button
+                      onClick={() => removeSlotLevel(Number(level))}
+                      className="text-[0.6rem] text-destructive hover:underline mt-0.5"
+                    >remove</button>
+                  )}
                 </div>
               ))}
           </div>
+
           {mode === 'edit' && (
-            <button onClick={() => {
-              const level = prompt('Spell slot level (1-9)?');
-              const max = prompt('Number of slots?');
-              if (level && max) {
-                updateCharacter(prev => ({
-                  ...prev,
-                  spellSlots: { ...prev.spellSlots, [Number(level)]: { max: Number(max), used: 0 } },
-                }));
-              }
-            }} className="text-xs text-primary hover:underline mt-2">
-              + Add spell slot level
-            </button>
+            showAddSlot ? (
+              <SlotForm onAdd={addSlotLevel} onCancel={() => setShowAddSlot(false)} existingLevels={Object.keys(character.spellSlots).map(Number)} />
+            ) : (
+              <button onClick={() => setShowAddSlot(true)} className="text-xs text-primary hover:underline mt-2">
+                + Add spell slot level
+              </button>
+            )
           )}
         </section>
-      )}
-      {mode === 'edit' && Object.keys(character.spellSlots).length === 0 && (
-        <button onClick={() => {
-          updateCharacter(prev => ({ ...prev, spellSlots: { 1: { max: 2, used: 0 } } }));
-        }} className="text-xs text-primary hover:underline">+ Add spell slots</button>
       )}
 
       {/* Search */}
@@ -213,6 +240,51 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
       {filteredSpells.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No spells found.</p>}
 
       {showAddSpell && <SpellForm onAdd={addSpell} onCancel={() => setShowAddSpell(false)} />}
+    </div>
+  );
+}
+
+function SlotForm({ onAdd, onCancel, existingLevels }: {
+  onAdd: (level: number, max: number) => void;
+  onCancel: () => void;
+  existingLevels: number[];
+}) {
+  const available = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(l => !existingLevels.includes(l));
+  const [level, setLevel] = useState(available[0] ?? 1);
+  const [max, setMax] = useState(2);
+
+  if (available.length === 0) {
+    return (
+      <div className="border rounded-lg p-3 bg-card mt-2 text-sm text-muted-foreground">
+        All spell slot levels (1–9) are already added.
+        <button onClick={onCancel} className="ml-2 text-xs text-primary hover:underline">Close</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded-lg p-3 bg-card mt-2 space-y-2">
+      <h4 className="text-sm font-semibold">Add Spell Slot Level</h4>
+      <div className="flex gap-2 items-end">
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Level</label>
+          <select value={level} onChange={e => setLevel(Number(e.target.value))}
+            className="px-2 py-1 text-sm border rounded bg-background">
+            {available.map(l => <option key={l} value={l}>Level {l}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Slots</label>
+          <input type="number" value={max} min={1} max={9}
+            onChange={e => setMax(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-16 px-2 py-1 text-sm border rounded bg-background" />
+        </div>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="px-3 py-1 text-xs rounded bg-secondary">Cancel</button>
+        <button onClick={() => onAdd(level, max)}
+          className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground">Add</button>
+      </div>
     </div>
   );
 }

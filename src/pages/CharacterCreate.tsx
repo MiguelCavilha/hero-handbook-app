@@ -42,7 +42,7 @@ export default function CharacterCreate() {
       alignment,
       abilities,
       speed: selectedRace?.speed ?? 30,
-      savingThrowProficiencies: (selectedClass?.savingThrows as AbilityName[]) ?? [],
+      savingThrowProficiencies: ([...(selectedClass?.savingThrows ?? [])]) as AbilityName[],
       spellcastingAbility: selectedClass?.spellcastingAbility ?? '',
     });
     await saveCharacter(char);

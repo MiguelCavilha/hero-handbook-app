@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCharacter } from '@/hooks/useCharacter';
 import { useState } from 'react';
 import { ArrowLeft, Eye, Edit3, Save } from 'lucide-react';
-import { totalLevel, proficiencyBonus, abilityModifier, formatModifier, passivePerception } from '@/lib/calculations';
+import { totalLevel } from '@/lib/calculations';
 import type { AppMode } from '@/lib/types';
 import { CharacterHeader } from '@/components/character/CharacterHeader';
 import { StatsTab } from '@/components/character/StatsTab';

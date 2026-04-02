@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCharacter } from '@/hooks/useCharacter';
-import { useState } from 'react';
-import { ArrowLeft, Eye, Edit3, CheckCircle2 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
+import { useState, useRef, useCallback } from 'react';
+import { ArrowLeft, Eye, Edit3, CheckCircle2, FileDown } from 'lucide-react';
 import type { AppMode } from '@/lib/types';
 import { CharacterHeader } from '@/components/character/CharacterHeader';
 import { StatsTab } from '@/components/character/StatsTab';
@@ -11,33 +12,53 @@ import { InventoryTab } from '@/components/character/InventoryTab';
 import { FeaturesTab } from '@/components/character/FeaturesTab';
 import { ProfileTab } from '@/components/character/ProfileTab';
 import { NotesTab } from '@/components/character/NotesTab';
+import { CharacterPrint } from '@/components/character/CharacterPrint';
+import ReactDOM from 'react-dom';
 
-const TABS = ['Stats', 'Combat', 'Spells', 'Inventory', 'Features', 'Profile', 'Notes'];
+type TabKey = 'Stats' | 'Combat' | 'Spells' | 'Inventory' | 'Features' | 'Profile' | 'Notes';
 
 export default function CharacterSheet() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { character, loading, error, updateCharacter, lastSaved } = useCharacter(id);
-  const [activeTab, setActiveTab] = useState('Stats');
+  const [activeTab, setActiveTab] = useState<TabKey>('Stats');
   const [mode, setMode] = useState<AppMode>('edit');
+
+  const handlePrint = useCallback(() => {
+    if (!character) return;
+    let el = document.getElementById('print-root');
+    if (!el) { el = document.createElement('div'); el.id = 'print-root'; document.body.appendChild(el); }
+    el.classList.add('active');
+    ReactDOM.render(<CharacterPrint character={character} t={t} />, el, () => {
+      window.print();
+      setTimeout(() => { el!.classList.remove('active'); ReactDOM.unmountComponentAtNode(el!); }, 500);
+    });
+  }, [character, t]);
+
+  const TABS: { key: TabKey; label: string }[] = [
+    { key: 'Stats',     label: t.tabStats },
+    { key: 'Combat',    label: t.tabCombat },
+    { key: 'Spells',    label: t.tabSpells },
+    { key: 'Inventory', label: t.tabInventory },
+    { key: 'Features',  label: t.tabFeatures },
+    { key: 'Profile',   label: t.tabProfile },
+    { key: 'Notes',     label: t.tabNotes },
+  ];
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 animate-fade-in">
       <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      <p className="text-sm text-muted-foreground">Loading character...</p>
+      <p className="text-sm text-muted-foreground">{t.loadingCharacter}</p>
     </div>
   );
 
   if (error || !character) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 animate-fade-in">
-      <div className="empty-state-icon">
-        <span className="text-2xl">⚠️</span>
-      </div>
-      <p className="font-display text-base font-semibold">Character not found</p>
-      <p className="text-sm text-muted-foreground">This adventurer may have been lost to the void.</p>
-      <button onClick={() => navigate('/')} className="btn-primary mt-2">
-        Return Home
-      </button>
+      <div className="empty-state-icon"><span className="text-2xl">⚠️</span></div>
+      <p className="font-display text-base font-semibold">{t.characterNotFound}</p>
+      <p className="text-sm text-muted-foreground">{t.characterNotFoundDesc}</p>
+      <button onClick={() => navigate('/')} className="btn-primary mt-2">{t.returnHome}</button>
     </div>
   );
 
@@ -48,16 +69,24 @@ export default function CharacterSheet() {
         className="sticky top-12 z-40 border-b px-4 py-2 flex items-center justify-between backdrop-blur-md"
         style={{ background: 'hsl(var(--card) / 0.92)' }}
       >
-        <button onClick={() => navigate('/')} className="btn-icon p-1.5" aria-label="Back to list">
-          <ArrowLeft className="w-4.5 h-4.5" />
+        <button onClick={() => navigate('/')} className="btn-icon p-1.5" aria-label={t.back}>
+          <ArrowLeft className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-2">
           {lastSaved && (
             <span className="text-xs text-muted-foreground flex items-center gap-1 animate-fade-in">
-              <CheckCircle2 className="w-3 h-3 text-green-500" /> Saved
+              <CheckCircle2 className="w-3 h-3 text-green-500" /> {t.saved}
             </span>
           )}
+          <button
+            onClick={handlePrint}
+            className="btn-icon p-1.5"
+            title="PDF"
+            aria-label="Export PDF"
+          >
+            <FileDown className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setMode(mode === 'edit' ? 'session' : 'edit')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
@@ -68,7 +97,7 @@ export default function CharacterSheet() {
             style={mode === 'session' ? { background: 'hsl(var(--primary))' } : {}}
           >
             {mode === 'session' ? <Eye className="w-3 h-3" /> : <Edit3 className="w-3 h-3" />}
-            {mode === 'session' ? 'Session' : 'Edit'}
+            {mode === 'session' ? t.sessionMode : t.editMode}
           </button>
         </div>
       </div>
@@ -82,13 +111,13 @@ export default function CharacterSheet() {
         style={{ top: '96px', background: 'hsl(var(--background) / 0.95)', backdropFilter: 'blur(8px)' }}
       >
         <div className="flex gap-1 px-4 py-2 min-w-max">
-          {TABS.map(tab => (
+          {TABS.map(({ key, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`tab-pill ${activeTab === tab ? 'tab-pill-active' : 'tab-pill-inactive'}`}
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`tab-pill ${activeTab === key ? 'tab-pill-active' : 'tab-pill-inactive'}`}
             >
-              {tab}
+              {label}
             </button>
           ))}
         </div>

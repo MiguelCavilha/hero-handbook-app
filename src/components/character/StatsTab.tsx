@@ -1,6 +1,7 @@
 import type { Character, AbilityName, AppMode } from '@/lib/types';
 import { ABILITY_NAMES, ABILITY_LABELS, SKILL_LABELS, SKILL_ABILITY_MAP } from '@/lib/types';
 import { abilityModifier, formatModifier, proficiencyBonus, calcSavingThrow, calcSkillBonus, passivePerception } from '@/lib/calculations';
+import { useI18n } from '@/lib/i18n';
 
 interface Props {
   character: Character;
@@ -18,6 +19,7 @@ const STAT_COLORS: Record<AbilityName, string> = {
 };
 
 export function StatsTab({ character, updateCharacter, mode }: Props) {
+  const { t } = useI18n();
   const prof = proficiencyBonus(character);
 
   const setAbility = (ability: AbilityName, value: number) => {
@@ -52,9 +54,8 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Ability Scores */}
       <section>
-        <h3 className="section-title">Ability Scores</h3>
+        <h3 className="section-title">{t.abilityScores}</h3>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {ABILITY_NAMES.map(ab => {
             const mod = abilityModifier(character.abilities[ab]);
@@ -62,12 +63,9 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
               <div key={ab} className={`stat-block ${STAT_COLORS[ab]}`}>
                 <span className="stat-label">{ABILITY_LABELS[ab].slice(0, 3)}</span>
                 {mode === 'edit' ? (
-                  <input
-                    type="number"
-                    value={character.abilities[ab]}
+                  <input type="number" value={character.abilities[ab]}
                     onChange={e => setAbility(ab, parseInt(e.target.value) || 10)}
-                    className="stat-value w-12 text-center bg-transparent outline-none"
-                  />
+                    className="stat-value w-12 text-center bg-transparent outline-none" />
                 ) : (
                   <span className="stat-value">{character.abilities[ab]}</span>
                 )}
@@ -78,9 +76,8 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
         </div>
       </section>
 
-      {/* Saving Throws */}
       <section>
-        <h3 className="section-title">Saving Throws</h3>
+        <h3 className="section-title">{t.savingThrows}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
           {ABILITY_NAMES.map(ab => {
             const isProficient = character.savingThrowProficiencies.includes(ab);
@@ -88,10 +85,8 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
             return (
               <div key={ab} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-secondary/50">
                 {mode === 'edit' && (
-                  <button
-                    onClick={() => toggleSaveProficiency(ab)}
-                    className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isProficient ? 'bg-primary border-primary' : 'border-muted-foreground'}`}
-                  />
+                  <button onClick={() => toggleSaveProficiency(ab)}
+                    className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isProficient ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
                 )}
                 <span className="text-sm flex-1">{ABILITY_LABELS[ab]}</span>
                 <span className="text-sm font-semibold">{formatModifier(bonus)}</span>
@@ -101,9 +96,8 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
         </div>
       </section>
 
-      {/* Skills */}
       <section>
-        <h3 className="section-title">Skills</h3>
+        <h3 className="section-title">{t.skills}</h3>
         <div className="space-y-0.5">
           {character.skills.map(skill => {
             const bonus = calcSkillBonus(character, skill.name);
@@ -112,16 +106,12 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
               <div key={skill.name} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-secondary/50">
                 {mode === 'edit' && (
                   <div className="flex gap-1">
-                    <button
-                      onClick={() => toggleSkillProficiency(skill.name)}
+                    <button onClick={() => toggleSkillProficiency(skill.name)}
                       className={`w-3 h-3 rounded-full border-2 shrink-0 ${skill.proficient ? 'bg-primary border-primary' : 'border-muted-foreground'}`}
-                      title="Proficiency"
-                    />
-                    <button
-                      onClick={() => toggleSkillExpertise(skill.name)}
+                      title={t.proficiency} />
+                    <button onClick={() => toggleSkillExpertise(skill.name)}
                       className={`w-3 h-3 rounded-sm border-2 shrink-0 ${skill.expertise ? 'bg-gold border-gold' : 'border-muted-foreground/30'}`}
-                      title="Expertise"
-                    />
+                      title="Expertise" />
                   </div>
                 )}
                 <span className="text-sm flex-1">
@@ -135,39 +125,29 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
         </div>
       </section>
 
-      {/* Passive */}
       <section>
-        <h3 className="section-title">Passive Scores</h3>
+        <h3 className="section-title">{t.passiveScores}</h3>
         <div className="flex gap-3">
           <div className="quick-stat">
-            <span className="text-[0.6rem] uppercase tracking-wider text-muted-foreground font-semibold">Perception</span>
+            <span className="text-[0.6rem] uppercase tracking-wider text-muted-foreground font-semibold">{t.passivePerception}</span>
             <span className="text-lg font-bold">{passivePerception(character)}</span>
           </div>
           <div className="quick-stat">
-            <span className="text-[0.6rem] uppercase tracking-wider text-muted-foreground font-semibold">Prof</span>
+            <span className="text-[0.6rem] uppercase tracking-wider text-muted-foreground font-semibold">{t.proficiency}</span>
             <span className="text-lg font-bold">{formatModifier(prof)}</span>
           </div>
         </div>
       </section>
 
-      {/* Languages & Tools */}
       {mode === 'edit' && (
         <>
-          <EditableList
-            title="Languages"
-            items={character.languages}
-            onChange={languages => updateCharacter({ languages })}
-          />
-          <EditableList
-            title="Tool Proficiencies"
-            items={character.toolProficiencies}
-            onChange={toolProficiencies => updateCharacter({ toolProficiencies })}
-          />
+          <EditableList title={t.languages} placeholder={t.addLanguage} items={character.languages} onChange={languages => updateCharacter({ languages })} />
+          <EditableList title={t.toolProficiencies} placeholder={t.addTool} items={character.toolProficiencies} onChange={toolProficiencies => updateCharacter({ toolProficiencies })} />
         </>
       )}
       {mode === 'session' && character.languages.length > 0 && (
         <section>
-          <h3 className="section-title">Languages</h3>
+          <h3 className="section-title">{t.languages}</h3>
           <div className="flex flex-wrap gap-1">{character.languages.map(l => <span key={l} className="px-2 py-0.5 rounded bg-secondary text-xs">{l}</span>)}</div>
         </section>
       )}
@@ -175,7 +155,7 @@ export function StatsTab({ character, updateCharacter, mode }: Props) {
   );
 }
 
-function EditableList({ title, items, onChange }: { title: string; items: string[]; onChange: (items: string[]) => void }) {
+function EditableList({ title, placeholder, items, onChange }: { title: string; placeholder: string; items: string[]; onChange: (items: string[]) => void }) {
   return (
     <section>
       <h3 className="section-title">{title}</h3>
@@ -187,16 +167,13 @@ function EditableList({ title, items, onChange }: { title: string; items: string
           </span>
         ))}
       </div>
-      <input
-        placeholder={`Add ${title.toLowerCase()}...`}
-        className="px-2 py-1 text-xs border rounded bg-background w-full sm:w-48"
+      <input placeholder={placeholder} className="px-2 py-1 text-xs border rounded bg-background w-full sm:w-48"
         onKeyDown={e => {
           if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
             onChange([...items, (e.target as HTMLInputElement).value.trim()]);
             (e.target as HTMLInputElement).value = '';
           }
-        }}
-      />
+        }} />
     </section>
   );
 }

@@ -165,7 +165,7 @@ export function CombatTab({ character, updateCharacter, mode }: Props) {
           {SRD_CONDITIONS.map(c => (
             <button key={c} onClick={() => toggleCondition(c)}
               className={`px-2 py-1 rounded text-xs font-medium transition-colors ${character.conditions.includes(c) ? 'bg-destructive/20 text-destructive border border-destructive/30' : 'bg-secondary text-muted-foreground'}`}>
-              {c}
+              {translateApiTerm(t, 'conditions', c)}
             </button>
           ))}
         </div>

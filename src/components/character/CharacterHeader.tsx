@@ -2,6 +2,8 @@ import type { Character, AppMode } from '@/lib/types';
 import { totalLevel, proficiencyBonus, formatModifier } from '@/lib/calculations';
 import { Camera } from 'lucide-react';
 import { usePortraitUpload } from '@/hooks/usePortraitUpload';
+import { useI18n } from '@/lib/i18n';
+import { translateApiTerm } from '@/lib/i18n/api-translation';
 import { getCharacterVisual } from '@/lib/character-visual';
 
 interface Props {
@@ -11,11 +13,24 @@ interface Props {
 }
 
 export function CharacterHeader({ character, updateCharacter, mode }: Props) {
+  const { t } = useI18n();
   const level = totalLevel(character);
   const prof = proficiencyBonus(character);
   const hpPercent = character.hpMax > 0 ? Math.min(100, (character.hpCurrent / character.hpMax) * 100) : 100;
   const { handleUpload } = usePortraitUpload(character.id, updateCharacter);
   const visual = getCharacterVisual(character);
+
+  const raceLabel = translateApiTerm(t, 'races', character.race);
+  const subraceLabel = character.subrace ? translateApiTerm(t, 'subraces', character.subrace) : '';
+  const classLabel = character.classes.length
+    ? character.classes
+        .map(cls => {
+          const clsName = translateApiTerm(t, 'classes', cls.name);
+          const sub = cls.subclass ? ` (${translateApiTerm(t, 'subclasses', cls.subclass)})` : '';
+          return `${clsName}${sub} ${cls.level}`;
+        })
+        .join(' / ')
+    : '';
 
   const hpColor = hpPercent > 60
     ? 'hsl(142, 45%, 42%)'
@@ -65,8 +80,8 @@ export function CharacterHeader({ character, updateCharacter, mode }: Props) {
             <h2 className="font-display text-xl font-bold truncate">{character.name}</h2>
           )}
           <p className="text-xs text-muted-foreground truncate mt-1">
-            {character.race}{character.subrace ? ` (${character.subrace})` : ''}
-            {character.classes[0]?.name ? ` · ${character.classes.map(c => `${c.name} ${c.level}`).join(' / ')}` : ''}
+            {raceLabel}{subraceLabel ? ` (${subraceLabel})` : ''}
+            {classLabel ? ` · ${classLabel}` : ''}
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--gold))' }}>
             Level {level} · Prof. {formatModifier(prof)}

@@ -116,7 +116,8 @@ export default function CharacterSheet() {
   // Mapeia a tab ativa para o índice de página no CharacterPrint
   const getPageIndexForTab = (tab: TabKey): number => {
     if (tab === 'Stats' || tab === 'Combat') return 0;
-    if (tab === 'Spells' || tab === 'Inventory' || tab === 'Features') return 1;
+    if (tab === 'Spells' || tab === 'Inventory') return 1;
+    if (tab === 'Features') return 2;
     return 2; // Profile, Notes
   };
 

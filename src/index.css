@@ -496,7 +496,7 @@
   }
   
   /* Ensure proper sizing for print elements */
-  .print-sheet { width: 100% !important; }
+  .print-sheet { width: 100% !important; max-width: 210mm !important; margin: 0 auto !important; }
   .print-page { width: 100% !important; }
 }
 
@@ -529,17 +529,26 @@
 .print-page {
   width: 100%;
   box-sizing: border-box;
-  min-height: 277mm;
-  padding: 12mm 8mm;
+  min-height: auto;
+  padding: 10mm 8mm;
   margin: 0;
-  page-break-after: always;
-  page-break-inside: avoid;
+  page-break-after: auto;
+  page-break-inside: auto;
+  break-inside: auto;
   background: white;
   overflow: visible;
   display: block;
   position: relative;
 }
-.print-page:last-child { 
+.print-page:last-child {
+  page-break-after: avoid;
+}
+.print-section {
+  margin-bottom: 4mm;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.print-section-header {
   page-break-after: avoid;
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n';
+import { translateApiTerm } from '@/lib/i18n/api-translation';
 import { createDefaultCharacter } from '@/lib/character-factory';
 import { saveCharacter } from '@/lib/db';
 import { SRD_RACES, SRD_CLASSES, SRD_BACKGROUNDS, SRD_ALIGNMENTS } from '@/lib/srd-data';
@@ -27,6 +28,13 @@ export default function CharacterCreate() {
 
   const selectedRace = SRD_RACES.find(r => r.name === race);
   const selectedClass = SRD_CLASSES.find(c => c.name === className);
+
+  const translatedRace = translateApiTerm(t, 'races', race);
+  const translatedSubrace = subrace ? translateApiTerm(t, 'subraces', subrace) : '';
+  const translatedClass = className ? translateApiTerm(t, 'classes', className) : '';
+  const translatedSubclass = subclass ? translateApiTerm(t, 'subclasses', subclass) : '';
+  const translatedBackground = background ? translateApiTerm(t, 'backgrounds', background) : '';
+  const translatedAlignment = alignment ? translateApiTerm(t, 'alignments', alignment) : '';
 
   const isStepValid = (s: number): boolean => {
     if (s === 0) return name.trim() !== '' && playerName.trim() !== '';
@@ -105,7 +113,9 @@ export default function CharacterCreate() {
               <select value={race} onChange={e => { setRace(e.target.value); setSubrace(''); }}
                 className="input-base" required>
                 <option value="">{t.selectRace}</option>
-                {SRD_RACES.map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
+                {SRD_RACES.map(r => (
+                  <option key={r.name} value={r.name}>{translateApiTerm(t, 'races', r.name)}</option>
+                ))}
               </select>
             </FieldGroup>
             {selectedRace && selectedRace.subraces.length > 0 && (
@@ -120,27 +130,35 @@ export default function CharacterCreate() {
               <select value={className} onChange={e => { setClassName(e.target.value); setSubclass(''); }}
                 className="input-base" required>
                 <option value="">{t.selectClass}</option>
-                {SRD_CLASSES.map(c => <option key={c.name} value={c.name}>{c.name} (d{c.hitDie})</option>)}
+                {SRD_CLASSES.map(c => (
+                  <option key={c.name} value={c.name}>{translateApiTerm(t, 'classes', c.name)} (d{c.hitDie})</option>
+                ))}
               </select>
             </FieldGroup>
             {selectedClass && selectedClass.subclasses && selectedClass.subclasses.length > 0 && (
               <FieldGroup label={t.subclass}>
                 <select value={subclass} onChange={e => setSubclass(e.target.value)} className="input-base">
                   <option value="">{t.selectSubclass}</option>
-                  {selectedClass.subclasses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                  {selectedClass.subclasses.map(s => (
+                    <option key={s.name} value={s.name}>{translateApiTerm(t, 'subclasses', s.name)}</option>
+                  ))}
                 </select>
               </FieldGroup>
             )}
             <FieldGroup label={t.background}>
               <select value={background} onChange={e => setBackground(e.target.value)} className="input-base">
                 <option value="">{t.selectBackground}</option>
-                {SRD_BACKGROUNDS.map(b => <option key={b} value={b}>{b}</option>)}
+                {SRD_BACKGROUNDS.map(b => (
+                  <option key={b} value={b}>{translateApiTerm(t, 'backgrounds', b)}</option>
+                ))}
               </select>
             </FieldGroup>
             <FieldGroup label={t.alignment}>
               <select value={alignment} onChange={e => setAlignment(e.target.value)} className="input-base">
                 <option value="">{t.selectAlignment}</option>
-                {SRD_ALIGNMENTS.map(a => <option key={a} value={a}>{a}</option>)}
+                {SRD_ALIGNMENTS.map(a => (
+                  <option key={a} value={a}>{translateApiTerm(t, 'alignments', a)}</option>
+                ))}
               </select>
             </FieldGroup>
           </>
@@ -184,10 +202,10 @@ export default function CharacterCreate() {
               <h3 className="font-display font-semibold mb-3 text-sm">{t.summaryTitle}</h3>
               <div className="space-y-1.5 text-sm">
                 <p><span className="text-muted-foreground">{t.summaryName}:</span> <span className="font-medium">{name || t.none}</span></p>
-                <p><span className="text-muted-foreground">{t.summaryRace}:</span> <span className="font-medium">{race || t.none}{subrace ? ` (${subrace})` : ''}</span></p>
-                <p><span className="text-muted-foreground">{t.summaryClass}:</span> <span className="font-medium">{className || t.none} {t.levelLabel} 1{subclass ? ` · ${subclass}` : ''}</span></p>
-                <p><span className="text-muted-foreground">{t.summaryBackground}:</span> <span className="font-medium">{background || t.none}</span></p>
-                <p><span className="text-muted-foreground">{t.summaryAlignment}:</span> <span className="font-medium">{alignment || t.none}</span></p>
+                <p><span className="text-muted-foreground">{t.summaryRace}:</span> <span className="font-medium">{translatedRace || t.none}{translatedSubrace ? ` (${translatedSubrace})` : ''}</span></p>
+                <p><span className="text-muted-foreground">{t.summaryClass}:</span> <span className="font-medium">{translatedClass || t.none} {t.levelLabel} 1{subclass ? ` · ${translatedSubclass}` : ''}</span></p>
+                <p><span className="text-muted-foreground">{t.summaryBackground}:</span> <span className="font-medium">{translatedBackground || t.none}</span></p>
+                <p><span className="text-muted-foreground">{t.summaryAlignment}:</span> <span className="font-medium">{translatedAlignment || t.none}</span></p>
               </div>
               <div className="divider-arcane my-3" />
               <div className="flex flex-wrap gap-1.5">

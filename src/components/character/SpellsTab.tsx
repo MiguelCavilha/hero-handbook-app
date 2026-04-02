@@ -3,6 +3,7 @@ import type { Character, AppMode, SpellEntry } from '@/lib/types';
 import { calcSpellSaveDC, calcSpellAttackBonus, formatModifier } from '@/lib/calculations';
 import { ABILITY_LABELS, ABILITY_NAMES } from '@/lib/types';
 import { useI18n } from '@/lib/i18n';
+import { translateApiTerm } from '@/lib/i18n/api-translation';
 import { Plus, Trash2, Search } from 'lucide-react';
 
 interface Props {
@@ -174,7 +175,7 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{spell.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {spell.school} · {spell.castingTime} · {spell.range}
+                      {translateApiTerm(t, 'schools', spell.school)} · {spell.castingTime} · {spell.range}
                       {spell.isConcentration && ' · C'}{spell.isRitual && ' · R'}
                     </p>
                     {spell.description && <p className="text-xs text-muted-foreground truncate">{spell.description}</p>}

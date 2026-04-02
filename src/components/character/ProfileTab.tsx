@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Character, AppMode } from '@/lib/types';
 import { SRD_RACES, SRD_CLASSES, SRD_BACKGROUNDS, SRD_ALIGNMENTS } from '@/lib/srd-data';
+import { translateApiTerm } from '@/lib/i18n/api-translation';
 import { Camera } from 'lucide-react';
 import { usePortraitUpload } from '@/hooks/usePortraitUpload';
 import { useI18n } from '@/lib/i18n';
@@ -48,9 +49,9 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
           </div>
           <div>
             <h2 className="font-display text-xl font-bold">{character.name}</h2>
-            <p className="text-sm text-muted-foreground">{character.race}{character.subrace ? ` (${character.subrace})` : ''}</p>
-            <p className="text-sm text-muted-foreground">{character.classes.map(c => `${c.name} ${c.level}`).join(' / ')}</p>
-            <p className="text-sm text-muted-foreground">{character.background} · {character.alignment}</p>
+            <p className="text-sm text-muted-foreground">{translateApiTerm(t, 'races', character.race)}{character.subrace ? ` (${translateApiTerm(t, 'subraces', character.subrace)})` : ''}</p>
+            <p className="text-sm text-muted-foreground">{character.classes.map(c => `${translateApiTerm(t, 'classes', c.name)} ${c.level}${c.subclass ? ` (${translateApiTerm(t, 'subclasses', c.subclass)})` : ''}`).join(' / ')}</p>
+            <p className="text-sm text-muted-foreground">{translateApiTerm(t, 'backgrounds', character.background)} · {translateApiTerm(t, 'alignments', character.alignment)}</p>
           </div>
         </div>
         {character.personalityTraits && <ReadonlyBlock title={t.personalityTraits} text={character.personalityTraits} />}
@@ -86,10 +87,28 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label={t.characterName} value={character.name} onChange={name => updateCharacter({ name })} />
           <Field label={t.playerName} value={character.playerName} onChange={playerName => updateCharacter({ playerName })} />
-          <SelectField label={t.race} value={character.race} onChange={race => updateCharacter({ race })} options={SRD_RACES.map(r => r.name)} allowCustom />
+          <SelectField
+            label={t.race}
+            value={character.race}
+            onChange={race => updateCharacter({ race })}
+            options={SRD_RACES.map(r => ({ value: r.name, label: translateApiTerm(t, 'races', r.name) }))}
+            allowCustom
+          />
           <Field label={t.subrace} value={character.subrace} onChange={subrace => updateCharacter({ subrace })} />
-          <SelectField label={t.background} value={character.background} onChange={background => updateCharacter({ background })} options={SRD_BACKGROUNDS} allowCustom />
-          <SelectField label={t.alignment} value={character.alignment} onChange={alignment => updateCharacter({ alignment })} options={SRD_ALIGNMENTS} placeholder={t.selectOption} />
+          <SelectField
+            label={t.background}
+            value={character.background}
+            onChange={background => updateCharacter({ background })}
+            options={SRD_BACKGROUNDS.map(b => ({ value: b, label: translateApiTerm(t, 'backgrounds', b) }))}
+            allowCustom
+          />
+          <SelectField
+            label={t.alignment}
+            value={character.alignment}
+            onChange={alignment => updateCharacter({ alignment })}
+            options={SRD_ALIGNMENTS.map(a => ({ value: a, label: translateApiTerm(t, 'alignments', a) }))}
+            placeholder={t.selectOption}
+          />
         </div>
       </section>
 
@@ -99,13 +118,19 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
           const classData = SRD_CLASSES.find(c => c.name === cls.name);
           return (
             <div key={i} className="grid grid-cols-3 gap-2 mb-2">
-              <SelectField label={t.classLabel} value={cls.name} onChange={name => {
-                const selected = SRD_CLASSES.find(c => c.name === name);
-                updateCharacter(prev => ({
-                  ...prev,
-                  classes: prev.classes.map((c, j) => j === i ? { ...c, name, hitDieSize: selected?.hitDie ?? c.hitDieSize, subclass: '' } : c),
-                }));
-              }} options={SRD_CLASSES.map(c => c.name)} allowCustom />
+              <SelectField
+                label={t.classLabel}
+                value={cls.name}
+                onChange={name => {
+                  const selected = SRD_CLASSES.find(c => c.name === name);
+                  updateCharacter(prev => ({
+                    ...prev,
+                    classes: prev.classes.map((c, j) => j === i ? { ...c, name, hitDieSize: selected?.hitDie ?? c.hitDieSize, subclass: '' } : c),
+                  }));
+                }}
+                options={SRD_CLASSES.map(c => ({ value: c.name, label: translateApiTerm(t, 'classes', c.name) }))}
+                allowCustom
+              />
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t.subclass}</label>
@@ -122,7 +147,7 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
                     const locked = cls.level < (sub.minLevel ?? 3);
                     return (
                       <option key={sub.name} value={sub.name} disabled={locked}>
-                        {sub.name}{locked ? ` (${t.unlockedAtLevel.replace('{level}', String(sub.minLevel ?? 3))})` : ''}
+                        {translateApiTerm(t, 'subclasses', sub.name)}{locked ? ` (${t.unlockedAtLevel.replace('{level}', String(sub.minLevel ?? 3))})` : ''}
                       </option>
                     );
                   })}

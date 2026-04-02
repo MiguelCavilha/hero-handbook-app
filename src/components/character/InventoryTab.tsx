@@ -113,7 +113,7 @@ function ItemForm({ onAdd, onCancel }: { onAdd: (i: Omit<InventoryItem, 'id'>) =
   return (
     <div className="border rounded-lg p-3 bg-card mt-2 space-y-2">
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Item name"
-        className="w-full px-2 py-1 text-sm border rounded bg-background" />
+        className="w-full px-2 py-1 text-sm border rounded bg-background" required />
       <div className="flex gap-2">
         <input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)}
           placeholder="Qty" className="w-16 px-2 py-1 text-sm border rounded bg-background" />

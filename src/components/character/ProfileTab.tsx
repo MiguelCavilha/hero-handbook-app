@@ -3,7 +3,7 @@ import type { Character, AppMode } from '@/lib/types';
 import { SRD_RACES, SRD_CLASSES, SRD_BACKGROUNDS, SRD_ALIGNMENTS } from '@/lib/srd-data';
 import { ABILITY_NAMES } from '@/lib/types';
 import { Camera } from 'lucide-react';
-import { saveCharacterImage } from '@/lib/db';
+import { usePortraitUpload } from '@/hooks/usePortraitUpload';
 
 interface Props {
   character: Character;
@@ -12,21 +12,7 @@ interface Props {
 }
 
 export function ProfileTab({ character, updateCharacter, mode }: Props) {
-  const handlePortraitUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Image must be smaller than 2MB.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
-      updateCharacter({ portrait: dataUrl });
-      await saveCharacterImage(character.id, dataUrl);
-    };
-    reader.readAsDataURL(file);
-  };
+  const { handleUpload } = usePortraitUpload(character.id, updateCharacter);
 
   if (mode === 'session') {
     return (
@@ -65,7 +51,7 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
             ) : <span>🐉</span>}
             <label className="absolute inset-0 flex items-center justify-center bg-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
               <Camera className="w-6 h-6 text-background" />
-              <input type="file" accept="image/*" className="hidden" onChange={handlePortraitUpload} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
             </label>
           </div>
           <div className="text-sm text-muted-foreground">
@@ -99,9 +85,12 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
         {character.classes.map((cls, i) => (
           <div key={i} className="grid grid-cols-3 gap-2 mb-2">
             <SelectField label="Class" value={cls.name} onChange={name => {
+              const classData = SRD_CLASSES.find(c => c.name === name);
               updateCharacter(prev => ({
                 ...prev,
-                classes: prev.classes.map((c, j) => j === i ? { ...c, name } : c),
+                classes: prev.classes.map((c, j) => j === i
+                  ? { ...c, name, hitDieSize: classData?.hitDie ?? c.hitDieSize }
+                  : c),
               }));
             }} options={SRD_CLASSES.map(c => c.name)} allowCustom />
             <Field label="Subclass" value={cls.subclass} onChange={subclass => {

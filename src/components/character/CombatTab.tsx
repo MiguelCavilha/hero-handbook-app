@@ -35,11 +35,12 @@ export function CombatTab({ character, updateCharacter, mode }: Props) {
   };
 
   // Editable combat stats
-  const setField = (field: keyof Character, value: number) => {
-    updateCharacter({
+  const setField = (field: 'armorClass' | 'initiative' | 'speed' | 'hpMax', value: number) => {
+    updateCharacter(prev => ({
+      ...prev,
       [field]: value,
-      manualOverrides: { ...character.manualOverrides, [field]: true },
-    } as any);
+      manualOverrides: { ...prev.manualOverrides, [field]: true },
+    }));
   };
 
   const resetField = (field: string) => {
@@ -199,7 +200,7 @@ export function CombatTab({ character, updateCharacter, mode }: Props) {
                   className="w-5 h-5 rounded bg-secondary text-xs font-bold">+</button>
               </div>
               {mode === 'edit' && (
-                <select value={r.rechargeOn} onChange={e => updateResource(r.id, { rechargeOn: e.target.value as any })}
+                <select value={r.rechargeOn} onChange={e => updateResource(r.id, { rechargeOn: e.target.value as 'short' | 'long' | 'none' })}
                   className="text-xs border rounded bg-background px-1 py-0.5">
                   <option value="short">Short</option>
                   <option value="long">Long</option>
@@ -277,7 +278,7 @@ function WeaponForm({ onAdd, onCancel }: { onAdd: (w: Omit<Weapon, 'id'>) => voi
   return (
     <div className="border rounded-lg p-3 bg-card mt-2 space-y-2">
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Weapon name"
-        className="w-full px-2 py-1 text-sm border rounded bg-background" />
+        className="w-full px-2 py-1 text-sm border rounded bg-background" required />
       <div className="flex gap-2">
         <input type="number" value={attackBonus} onChange={e => setAttackBonus(parseInt(e.target.value) || 0)}
           placeholder="Atk bonus" className="w-20 px-2 py-1 text-sm border rounded bg-background" />

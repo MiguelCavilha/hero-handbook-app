@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Character, UserPreferences } from './types';
+import { createDefaultCharacter } from './character-factory';
 
 interface CharSheetDB extends DBSchema {
   characters: {
@@ -52,8 +53,9 @@ export async function getCharacter(id: string): Promise<Character | undefined> {
 
 export async function saveCharacter(char: Character): Promise<void> {
   const db = await getDB();
-  char.updatedAt = new Date().toISOString();
-  await db.put('characters', char);
+  // Nunca persiste o base64 dentro do objeto Character — mantém portrait como null no store
+  const toSave: Character = { ...char, portrait: null, updatedAt: new Date().toISOString() };
+  await db.put('characters', toSave);
 }
 
 export async function deleteCharacter(id: string): Promise<void> {
@@ -65,18 +67,23 @@ export async function deleteCharacter(id: string): Promise<void> {
 export async function duplicateCharacter(id: string): Promise<Character | null> {
   const char = await getCharacter(id);
   if (!char) return null;
+  const newId = crypto.randomUUID();
   const newChar: Character = {
     ...char,
-    id: crypto.randomUUID(),
+    id: newId,
     name: `${char.name} (Copy)`,
+    portrait: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   await saveCharacter(newChar);
-  return newChar;
+  // Copia a imagem separadamente
+  const img = await getCharacterImage(id);
+  if (img) await saveCharacterImage(newId, img);
+  return { ...newChar, portrait: img };
 }
 
-// Images
+// Images — fonte única de verdade para portraits
 export async function saveCharacterImage(charId: string, data: string): Promise<void> {
   const db = await getDB();
   await db.put('images', { id: charId, data });
@@ -88,24 +95,30 @@ export async function getCharacterImage(charId: string): Promise<string | null> 
   return img?.data ?? null;
 }
 
+// Carrega personagem com portrait injetado do store images
+export async function getCharacterWithPortrait(id: string): Promise<Character | undefined> {
+  const char = await getCharacter(id);
+  if (!char) return undefined;
+  const portrait = await getCharacterImage(id);
+  return { ...char, portrait };
+}
+
 // Export/Import
 export async function exportCharacter(id: string): Promise<string> {
   const char = await getCharacter(id);
-  const img = await getCharacterImage(id);
-  return JSON.stringify({ character: char, image: img }, null, 2);
+  const image = await getCharacterImage(id);
+  // portrait não fica duplicado: char.portrait é null no store, image é o base64 separado
+  return JSON.stringify({ character: char, image }, null, 2);
 }
 
-function validateCharacterShape(data: unknown): data is Character {
+function validateCharacterShape(data: unknown): data is Partial<Character> {
   if (!data || typeof data !== 'object') return false;
   const c = data as Record<string, unknown>;
   return (
     typeof c.name === 'string' &&
     typeof c.id === 'string' &&
-    typeof c.abilities === 'object' && c.abilities !== null &&
     Array.isArray(c.classes) &&
-    Array.isArray(c.skills) &&
-    typeof c.hpMax === 'number' &&
-    typeof c.hpCurrent === 'number'
+    c.classes.length > 0
   );
 }
 
@@ -122,15 +135,24 @@ export async function importCharacter(json: string): Promise<Character> {
     throw new Error('File does not contain a valid character. Missing required fields.');
   }
 
-  const char: Character = { ...raw as Character };
-  char.id = crypto.randomUUID();
-  char.createdAt = new Date().toISOString();
-  char.updatedAt = new Date().toISOString();
+  // Merge com defaults garante que campos novos/ausentes nunca fiquem undefined
+  const char = createDefaultCharacter({
+    ...(raw as Partial<Character>),
+    id: crypto.randomUUID(),
+    portrait: null, // portrait vive no store images, não no objeto
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
   await saveCharacter(char);
-  const image = (data as any)?.image;
-  if (image && typeof image === 'string') {
-    await saveCharacterImage(char.id, image);
+
+  // Suporta portrait tanto no campo legado raw.portrait quanto no campo image separado
+  const imageData = (data as any)?.image ?? (raw as any)?.portrait;
+  if (imageData && typeof imageData === 'string' && imageData.startsWith('data:')) {
+    await saveCharacterImage(char.id, imageData);
+    char.portrait = imageData; // injeta em memória para uso imediato
   }
+
   return char;
 }
 
@@ -138,8 +160,9 @@ export async function exportAllCharacters(): Promise<string> {
   const chars = await getAllCharacters();
   const results = [];
   for (const c of chars) {
-    const img = await getCharacterImage(c.id);
-    results.push({ character: c, image: img });
+    const image = await getCharacterImage(c.id);
+    // char.portrait é null no store — image é o base64 separado, sem duplicação
+    results.push({ character: c, image });
   }
   return JSON.stringify({ characters: results, exportedAt: new Date().toISOString() }, null, 2);
 }

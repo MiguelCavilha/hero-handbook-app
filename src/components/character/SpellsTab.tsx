@@ -302,7 +302,7 @@ function SpellForm({ onAdd, onCancel }: { onAdd: (s: Omit<SpellEntry, 'id'>) => 
   return (
     <div className="border rounded-lg p-3 bg-card space-y-2">
       <h4 className="text-sm font-semibold">Add Spell</h4>
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Spell name" className="w-full px-2 py-1 text-sm border rounded bg-background" />
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Spell name" className="w-full px-2 py-1 text-sm border rounded bg-background" required />
       <div className="grid grid-cols-2 gap-2">
         <select value={level} onChange={e => setLevel(Number(e.target.value))} className="px-2 py-1 text-sm border rounded bg-background">
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(l => <option key={l} value={l}>{l === 0 ? 'Cantrip' : `Level ${l}`}</option>)}

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useCharacters } from '@/hooks/useCharacters';
-import { Plus, Upload, Download, Copy, Trash2, Users, FileDown } from 'lucide-react';
-import { totalLevel, proficiencyBonus } from '@/lib/calculations';
+import { Plus, Upload, Download, Copy, Trash2, Users, FileDown, Swords } from 'lucide-react';
+import { totalLevel } from '@/lib/calculations';
 import { exportCharacter, exportAllCharacters, importCharacter } from '@/lib/db';
 import { useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
@@ -38,10 +38,7 @@ export default function CharacterList() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (data.characters) {
-        // Bulk import
-        for (const entry of data.characters) {
-          await importCharacter(JSON.stringify(entry));
-        }
+        for (const entry of data.characters) await importCharacter(JSON.stringify(entry));
         toast({ title: 'Imported!', description: `${data.characters.length} characters imported.` });
       } else {
         const char = await importCharacter(text);
@@ -55,31 +52,27 @@ export default function CharacterList() {
   };
 
   return (
-    <div className="px-4 py-6 animate-fade-in">
-      <div className="text-center mb-8">
-        <h1 className="font-display text-3xl font-bold mb-2">D&D Character Sheet</h1>
-        <p className="text-muted-foreground text-sm">Create and manage your adventurers</p>
+    <div className="px-4 py-8 animate-fade-in max-w-4xl mx-auto">
+      {/* Hero */}
+      <div className="text-center mb-10">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+          style={{ background: 'hsl(var(--primary) / 0.1)', border: '1px solid hsl(var(--primary) / 0.2)' }}>
+          <Swords className="w-6 h-6" style={{ color: 'hsl(var(--primary))' }} />
+        </div>
+        <h1 className="font-display text-3xl font-bold mb-2 tracking-wide">Hero Handbook</h1>
+        <p className="text-muted-foreground text-sm">Your adventurers, always ready</p>
       </div>
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 justify-center mb-8">
-        <button
-          onClick={() => navigate('/create')}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-        >
+        <button onClick={() => navigate('/create')} className="btn-primary">
           <Plus className="w-4 h-4" /> New Character
         </button>
-        <button
-          onClick={() => fileInput.current?.click()}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-        >
+        <button onClick={() => fileInput.current?.click()} className="btn-secondary">
           <Upload className="w-4 h-4" /> Import
         </button>
         {characters.length > 0 && (
-          <button
-            onClick={handleExportAll}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-          >
+          <button onClick={handleExportAll} className="btn-secondary">
             <FileDown className="w-4 h-4" /> Backup All
           </button>
         )}
@@ -88,55 +81,98 @@ export default function CharacterList() {
 
       {/* Character list */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading characters...</div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="rounded-xl border p-4 space-y-3" style={{ background: 'hsl(var(--card))' }}>
+              <div className="flex gap-3">
+                <div className="loading-pulse w-14 h-14 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="loading-pulse h-4 w-3/4 rounded" />
+                  <div className="loading-pulse h-3 w-1/2 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : characters.length === 0 ? (
-        <div className="text-center py-16">
-          <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground mb-2">No characters yet</p>
-          <p className="text-sm text-muted-foreground">Create your first adventurer or import an existing character file.</p>
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <Users className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <p className="font-display text-base font-semibold mb-1">No adventurers yet</p>
+          <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+            Create your first character or import an existing file to begin your journey.
+          </p>
+          <button onClick={() => navigate('/create')} className="btn-primary">
+            <Plus className="w-4 h-4" /> Create Character
+          </button>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {characters.map(char => (
             <div
               key={char.id}
-              className="group border rounded-xl bg-card p-4 hover:border-primary/50 transition-all cursor-pointer"
+              className="card-surface-hover group p-4"
               onClick={() => navigate(`/character/${char.id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && navigate(`/character/${char.id}`)}
             >
               <div className="flex items-start gap-3">
                 {/* Portrait */}
-                <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-2xl shrink-0 overflow-hidden">
-                  {char.portrait && char.portrait.startsWith('data:') ? (
+                <div className="w-14 h-14 rounded-xl shrink-0 overflow-hidden flex items-center justify-center text-2xl"
+                  style={{ background: 'hsl(var(--secondary))', border: '1px solid hsl(var(--border))' }}>
+                  {char.portrait?.startsWith('data:') ? (
                     <img src={char.portrait} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <span>{char.classes[0]?.name ? getClassEmoji(char.classes[0].name) : '🧙'}</span>
                   )}
                 </div>
+
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-display font-semibold truncate">{char.name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {char.race}{char.race && char.classes[0]?.name ? ' · ' : ''}{char.classes.map(c => `${c.name} ${c.level}`).join(' / ')}
+                  <h3 className="font-display font-semibold truncate text-sm leading-snug">{char.name}</h3>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {char.race}{char.race && char.classes[0]?.name ? ' · ' : ''}
+                    {char.classes.map(c => `${c.name} ${c.level}`).join(' / ')}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Level {totalLevel(char)}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">Level {totalLevel(char)}</p>
                 </div>
               </div>
 
               {/* Quick stats */}
-              <div className="flex gap-3 mt-3 text-xs">
-                <span className="px-2 py-0.5 rounded bg-secondary">HP {char.hpCurrent}/{char.hpMax}</span>
-                <span className="px-2 py-0.5 rounded bg-secondary">AC {char.armorClass}</span>
+              <div className="flex gap-2 mt-3">
+                <span className="chip">HP {char.hpCurrent}/{char.hpMax}</span>
+                <span className="chip">AC {char.armorClass}</span>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                <button onClick={() => handleExport(char.id, char.name)} className="p-1.5 rounded hover:bg-secondary" title="Export">
-                  <Download className="w-3.5 h-3.5 text-muted-foreground" />
+              {/* Actions — always visible on mobile, hover on desktop */}
+              <div
+                className="flex gap-1 mt-3 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity duration-150"
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => handleExport(char.id, char.name)}
+                  className="btn-icon p-1.5 rounded-lg"
+                  title="Export"
+                  aria-label={`Export ${char.name}`}
+                >
+                  <Download className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => duplicate(char.id)} className="p-1.5 rounded hover:bg-secondary" title="Duplicate">
-                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                <button
+                  onClick={() => duplicate(char.id)}
+                  className="btn-icon p-1.5 rounded-lg"
+                  title="Duplicate"
+                  aria-label={`Duplicate ${char.name}`}
+                >
+                  <Copy className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => { if (confirm(`Delete ${char.name}?`)) remove(char.id); }} className="p-1.5 rounded hover:bg-secondary" title="Delete">
-                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                <button
+                  onClick={() => { if (confirm(`Delete ${char.name}?`)) remove(char.id); }}
+                  className="btn-icon p-1.5 rounded-lg hover:text-destructive focus-visible:text-destructive"
+                  title="Delete"
+                  aria-label={`Delete ${char.name}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

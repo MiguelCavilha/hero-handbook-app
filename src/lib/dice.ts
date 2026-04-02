@@ -23,7 +23,7 @@ export function rollDice(expression: string, label?: string): DiceRoll {
       results: [],
       total: 0,
       timestamp: new Date().toISOString(),
-      label: label || 'Invalid',
+      label: `Invalid expression: "${expression}". Use format like 2d6+3`,
     };
   }
   const results: number[] = [];

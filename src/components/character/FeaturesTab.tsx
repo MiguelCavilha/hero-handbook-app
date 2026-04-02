@@ -190,7 +190,7 @@ function FeatureForm({ onAdd, onCancel }: { onAdd: (f: Omit<Feature, 'id'>) => v
 
   return (
     <div className="border rounded-lg p-3 bg-card space-y-2">
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Feature name" className="w-full px-2 py-1 text-sm border rounded bg-background" />
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Feature name" className="w-full px-2 py-1 text-sm border rounded bg-background" required />
       <div className="flex gap-2">
         <select value={source} onChange={e => setSource(e.target.value)} className="px-2 py-1 text-sm border rounded bg-background">
           <option>Race</option><option>Class</option><option>Subclass</option><option>Feat</option><option>Background</option><option>Other</option>

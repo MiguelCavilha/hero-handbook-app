@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Character } from '@/lib/types';
-import { getCharacter, saveCharacter } from '@/lib/db';
+import { getCharacterWithPortrait, saveCharacter } from '@/lib/db';
 import { applyAutoCalculations } from '@/lib/calculations';
 
 export function useCharacter(id: string | undefined) {
@@ -9,13 +9,16 @@ export function useCharacter(id: string | undefined) {
   const [error, setError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
+  // Ref sempre aponta para o valor mais recente — evita stale closure no save
+  const latestCharacter = useRef<Character | null>(null);
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
     setLoading(true);
-    getCharacter(id)
+    getCharacterWithPortrait(id)
       .then(c => {
         setCharacter(c ?? null);
+        latestCharacter.current = c ?? null;
         setError(null);
       })
       .catch(e => setError(e.message))
@@ -28,12 +31,16 @@ export function useCharacter(id: string | undefined) {
       const next = typeof updates === 'function' ? updates(prev) : { ...prev, ...updates };
       const calculated = applyAutoCalculations(next);
 
-      // Debounced auto-save — surface errors via console (non-blocking)
+      // Sempre salva o estado mais recente via ref — sem stale closure
+      latestCharacter.current = calculated;
+
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
-        saveCharacter(calculated)
+        const toSave = latestCharacter.current;
+        if (!toSave) return;
+        saveCharacter(toSave)
           .then(() => setLastSaved(new Date()))
-          .catch(e => console.error('Auto-save failed:', e));
+          .catch(e => console.error('Auto-save failed:', String(e)));
       }, 500);
 
       return calculated;
@@ -41,11 +48,19 @@ export function useCharacter(id: string | undefined) {
   }, []);
 
   const forceSave = useCallback(async () => {
-    if (!character) return;
+    const toSave = latestCharacter.current;
+    if (!toSave) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    await saveCharacter(character);
+    await saveCharacter(toSave);
     setLastSaved(new Date());
-  }, [character]);
+  }, []);
+
+  // Limpa o timeout ao desmontar para evitar setState em componente desmontado
+  useEffect(() => {
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    };
+  }, []);
 
   return { character, loading, error, updateCharacter, forceSave, lastSaved };
 }

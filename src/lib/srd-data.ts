@@ -1,7 +1,15 @@
 // Hardcoded SRD data for offline use
 // This can be replaced/augmented by API calls to dnd5eapi.co
+import type { AbilityScores } from './types';
 
-export const SRD_RACES = [
+type RaceEntry = {
+  name: string;
+  speed: number;
+  abilityBonuses: Partial<AbilityScores>;
+  subraces: string[];
+};
+
+export const SRD_RACES: RaceEntry[] = [
   { name: 'Human', speed: 30, abilityBonuses: { str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }, subraces: [] },
   { name: 'Elf', speed: 30, abilityBonuses: { dex: 2 }, subraces: ['High Elf', 'Wood Elf', 'Dark Elf (Drow)'] },
   { name: 'Dwarf', speed: 25, abilityBonuses: { con: 2 }, subraces: ['Hill Dwarf', 'Mountain Dwarf'] },

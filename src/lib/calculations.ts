@@ -95,6 +95,7 @@ export function applyAutoCalculations(char: Character): Character {
 }
 
 // Spell slots by class level (simplified - single class caster)
+// Disponível para uso futuro em auto-preenchimento de spell slots na ProfileTab
 export function getSpellSlotsByLevel(casterLevel: number): Record<number, number> {
   const table: Record<number, number[]> = {
     1: [2], 2: [3], 3: [4, 2], 4: [4, 3], 5: [4, 3, 2],

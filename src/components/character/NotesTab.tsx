@@ -111,7 +111,7 @@ function JournalForm({ onAdd, onCancel }: { onAdd: (title: string, content: stri
   return (
     <div className="border rounded-lg p-3 bg-card space-y-2 mb-3">
       <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Entry title"
-        className="w-full px-2 py-1 text-sm border rounded bg-background" />
+        className="w-full px-2 py-1 text-sm border rounded bg-background" required />
       <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="What happened..."
         className="w-full px-2 py-1 text-sm border rounded bg-background h-20 resize-none" />
       <div className="flex gap-2 justify-end">

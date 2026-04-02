@@ -1,4 +1,5 @@
 import type { Character, SkillName, SkillProficiency } from './types';
+import { getNextLevelFromXp } from './calculations';
 
 const ALL_SKILLS: SkillName[] = [
   'acrobatics', 'animalHandling', 'arcana', 'athletics', 'deception',
@@ -12,6 +13,9 @@ export function createDefaultCharacter(partial?: Partial<Character>): Character 
     name, proficient: false, expertise: false,
   }));
 
+  const xpLevel = partial?.experience ? getNextLevelFromXp(partial.experience) : 1;
+  const defaultClassLevel = Math.max(1, Math.min(20, xpLevel));
+
   return {
     id: crypto.randomUUID(),
     name: 'New Character',
@@ -19,7 +23,9 @@ export function createDefaultCharacter(partial?: Partial<Character>): Character 
     portrait: null,
     race: '',
     subrace: '',
-    classes: [{ name: '', subclass: '', level: 1, hitDieSize: 8, hitDiceUsed: 0 }],
+    classes: partial?.classes?.length
+      ? partial.classes.map(cls => ({ ...cls, level: Math.max(1, Math.min(20, cls.level)) }))
+      : [{ name: '', subclass: '', level: defaultClassLevel, hitDieSize: 8, hitDiceUsed: 0 }],
     background: '',
     alignment: '',
     experience: 0,

@@ -80,6 +80,48 @@ export function calcSpellAttackBonus(char: Character): number {
   return proficiencyBonus(char) + abilityModifier(char.abilities[char.spellcastingAbility]);
 }
 
+export const XP_LEVEL_TABLE: Record<number, number> = {
+  1: 0,
+  2: 300,
+  3: 900,
+  4: 2700,
+  5: 6500,
+  6: 14000,
+  7: 23000,
+  8: 34000,
+  9: 48000,
+  10: 64000,
+  11: 85000,
+  12: 100000,
+  13: 120000,
+  14: 140000,
+  15: 165000,
+  16: 195000,
+  17: 225000,
+  18: 265000,
+  19: 305000,
+  20: 355000,
+};
+
+export function getXpForLevel(level: number): number {
+  return XP_LEVEL_TABLE[Math.min(Math.max(level, 1), 20)] || 0;
+}
+
+export function getNextLevelFromXp(xp: number): number {
+  for (let level = 1; level <= 20; level += 1) {
+    if (xp < XP_LEVEL_TABLE[level]) {
+      return Math.max(level - 1, 1);
+    }
+  }
+  return 20;
+}
+
+export function xpToNextLevel(xp: number): number {
+  const current = getNextLevelFromXp(xp);
+  if (current >= 20) return 0;
+  return Math.max(0, XP_LEVEL_TABLE[current + 1] - xp);
+}
+
 export function applyAutoCalculations(char: Character): Character {
   const updated = { ...char };
   if (!updated.manualOverrides['initiative']) {

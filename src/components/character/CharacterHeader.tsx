@@ -2,6 +2,7 @@ import type { Character, AppMode } from '@/lib/types';
 import { totalLevel, proficiencyBonus, formatModifier } from '@/lib/calculations';
 import { Camera } from 'lucide-react';
 import { usePortraitUpload } from '@/hooks/usePortraitUpload';
+import { getCharacterVisual } from '@/lib/character-visual';
 
 interface Props {
   character: Character;
@@ -14,6 +15,7 @@ export function CharacterHeader({ character, updateCharacter, mode }: Props) {
   const prof = proficiencyBonus(character);
   const hpPercent = character.hpMax > 0 ? Math.min(100, (character.hpCurrent / character.hpMax) * 100) : 100;
   const { handleUpload } = usePortraitUpload(character.id, updateCharacter);
+  const visual = getCharacterVisual(character);
 
   const hpColor = hpPercent > 60
     ? 'hsl(142, 45%, 42%)'
@@ -37,7 +39,7 @@ export function CharacterHeader({ character, updateCharacter, mode }: Props) {
           {character.portrait?.startsWith('data:') ? (
             <img src={character.portrait} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className="select-none">🐉</span>
+            <span className="select-none text-3xl">{visual?.emoji}</span>
           )}
           {mode === 'edit' && (
             <label className="absolute inset-0 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"

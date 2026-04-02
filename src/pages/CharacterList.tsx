@@ -6,6 +6,7 @@ import { totalLevel } from '@/lib/calculations';
 import { exportCharacter, exportAllCharacters, importCharacter } from '@/lib/db';
 import { useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { getCharacterVisual } from '@/lib/character-visual';
 
 // Emblema SVG original — não usa nenhuma marca registrada
 function HeroEmblem() {
@@ -168,11 +169,12 @@ export default function CharacterList() {
                     background: 'linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--muted)))',
                     border: '1px solid hsl(var(--border))',
                   }}>
-                  {char.portrait?.startsWith('data:') ? (
-                    <img src={char.portrait} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="select-none">{char.classes[0]?.name ? getClassEmoji(char.classes[0].name) : '🧙'}</span>
-                  )}
+                  {(() => {
+                    const visual = getCharacterVisual(char);
+                    return visual === null
+                      ? <img src={char.portrait!} alt="" className="w-full h-full object-cover" />
+                      : <span className="select-none">{visual.emoji}</span>;
+                  })()}
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -219,13 +221,4 @@ export default function CharacterList() {
       )}
     </div>
   );
-}
-
-function getClassEmoji(className: string): string {
-  const map: Record<string, string> = {
-    Barbarian: '🪓', Bard: '🎵', Cleric: '✨', Druid: '🌿',
-    Fighter: '⚔️', Monk: '👊', Paladin: '🛡️', Ranger: '🏹',
-    Rogue: '🗡️', Sorcerer: '⚡', Warlock: '🔮', Wizard: '🧙',
-  };
-  return map[className] || '🐉';
 }

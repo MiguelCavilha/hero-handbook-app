@@ -123,11 +123,11 @@ export default function CharacterCreate() {
                 {SRD_CLASSES.map(c => <option key={c.name} value={c.name}>{c.name} (d{c.hitDie})</option>)}
               </select>
             </FieldGroup>
-            {selectedClass && selectedClass.subclasses.length > 0 && (
+            {selectedClass && selectedClass.subclasses && selectedClass.subclasses.length > 0 && (
               <FieldGroup label={t.subclass}>
                 <select value={subclass} onChange={e => setSubclass(e.target.value)} className="input-base">
                   <option value="">{t.selectSubclass}</option>
-                  {selectedClass.subclasses.map(s => <option key={s} value={s}>{s}</option>)}
+                  {selectedClass.subclasses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                 </select>
               </FieldGroup>
             )}

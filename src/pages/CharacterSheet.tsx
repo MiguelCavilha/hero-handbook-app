@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCharacter } from '@/hooks/useCharacter';
 import { useI18n } from '@/lib/i18n';
-import { useState, useRef, useCallback } from 'react';
-import { ArrowLeft, Eye, Edit3, CheckCircle2, FileDown } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { ArrowLeft, Eye, Edit3, CheckCircle2, FileDown, ChevronDown } from 'lucide-react';
 import type { AppMode } from '@/lib/types';
 import { CharacterHeader } from '@/components/character/CharacterHeader';
 import { StatsTab } from '@/components/character/StatsTab';
@@ -13,9 +13,77 @@ import { FeaturesTab } from '@/components/character/FeaturesTab';
 import { ProfileTab } from '@/components/character/ProfileTab';
 import { NotesTab } from '@/components/character/NotesTab';
 import { CharacterPrint } from '@/components/character/CharacterPrint';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 
 type TabKey = 'Stats' | 'Combat' | 'Spells' | 'Inventory' | 'Features' | 'Profile' | 'Notes';
+
+/** Monta o CharacterPrint num container isolado, aguarda render completo, dispara print, desmonta. */
+function triggerPrint(
+  character: Parameters<typeof CharacterPrint>[0]['character'],
+  t: Parameters<typeof CharacterPrint>[0]['t'],
+  pageIndex?: number, // undefined = todas as páginas
+) {
+  // Garante container limpo
+  let container = document.getElementById('print-root');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'print-root';
+    document.body.appendChild(container);
+  }
+  container.classList.add('active');
+
+  // Se for página específica, injeta CSS de controle de página
+  let styleEl: HTMLStyleElement | null = null;
+  if (pageIndex !== undefined) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'print-page-filter';
+    // Oculta todas as .print-page exceto a selecionada
+    styleEl.textContent = `.print-page { display: none !important; } .print-page:nth-child(${pageIndex + 1}) { display: block !important; }`;
+    document.head.appendChild(styleEl);
+  }
+
+  const root = createRoot(container);
+  
+  // Renderiza sincronamente e aguarda múltiplos frames para garantir layout
+  flushSync(() => {
+    root.render(<CharacterPrint character={character} t={t} />);
+  });
+
+  // Aguarda múltiplos animation frames para garantir renderização e layout completos
+  let frameCount = 0;
+  const maxFrames = 5;
+  
+  const checkAndPrint = () => {
+    frameCount++;
+    if (frameCount >= maxFrames) {
+      // Extra timeout para garantir que o layout está completamente pronto
+      setTimeout(() => {
+        // Força recalc de layout
+        const sheet = document.querySelector('.print-sheet');
+        if (sheet) {
+          sheet.getBoundingClientRect(); // força reflow
+        }
+        
+        // Aguarda mais um frame antes de imprimir
+        requestAnimationFrame(() => {
+          window.print();
+          
+          // Cleanup após o diálogo de impressão fechar
+          setTimeout(() => {
+            root.unmount();
+            container!.classList.remove('active');
+            if (styleEl) { styleEl.remove(); }
+          }, 1000);
+        });
+      }, 100);
+    } else {
+      requestAnimationFrame(checkAndPrint);
+    }
+  };
+
+  requestAnimationFrame(checkAndPrint);
+}
 
 export default function CharacterSheet() {
   const { id } = useParams<{ id: string }>();
@@ -24,17 +92,39 @@ export default function CharacterSheet() {
   const { character, loading, error, updateCharacter, lastSaved } = useCharacter(id);
   const [activeTab, setActiveTab] = useState<TabKey>('Stats');
   const [mode, setMode] = useState<AppMode>('edit');
+  const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
+  const pdfMenuRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useCallback(() => {
+  // Fecha o menu ao clicar fora
+  useEffect(() => {
+    if (!pdfMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (pdfMenuRef.current && !pdfMenuRef.current.contains(e.target as Node)) {
+        setPdfMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [pdfMenuOpen]);
+
+  const handlePrintFull = useCallback(() => {
     if (!character) return;
-    let el = document.getElementById('print-root');
-    if (!el) { el = document.createElement('div'); el.id = 'print-root'; document.body.appendChild(el); }
-    el.classList.add('active');
-    ReactDOM.render(<CharacterPrint character={character} t={t} />, el, () => {
-      window.print();
-      setTimeout(() => { el!.classList.remove('active'); ReactDOM.unmountComponentAtNode(el!); }, 500);
-    });
+    setPdfMenuOpen(false);
+    triggerPrint(character, t);
   }, [character, t]);
+
+  // Mapeia a tab ativa para o índice de página no CharacterPrint
+  const getPageIndexForTab = (tab: TabKey): number => {
+    if (tab === 'Stats' || tab === 'Combat') return 0;
+    if (tab === 'Spells' || tab === 'Inventory' || tab === 'Features') return 1;
+    return 2; // Profile, Notes
+  };
+
+  const handlePrintCurrentPage = useCallback(() => {
+    if (!character) return;
+    setPdfMenuOpen(false);
+    triggerPrint(character, t, getPageIndexForTab(activeTab));
+  }, [character, t, activeTab]);
 
   const TABS: { key: TabKey; label: string }[] = [
     { key: 'Stats',     label: t.tabStats },
@@ -79,14 +169,48 @@ export default function CharacterSheet() {
               <CheckCircle2 className="w-3 h-3 text-green-500" /> {t.saved}
             </span>
           )}
-          <button
-            onClick={handlePrint}
-            className="btn-icon p-1.5"
-            title="PDF"
-            aria-label="Export PDF"
-          >
-            <FileDown className="w-4 h-4" />
-          </button>
+
+          {/* PDF export dropdown */}
+          <div className="relative" ref={pdfMenuRef}>
+            <button
+              onClick={() => setPdfMenuOpen(v => !v)}
+              className="btn-icon p-1.5 flex items-center gap-0.5"
+              title="Exportar PDF"
+              aria-label="Exportar PDF"
+              aria-expanded={pdfMenuOpen}
+            >
+              <FileDown className="w-4 h-4" />
+              <ChevronDown className="w-3 h-3 opacity-60" />
+            </button>
+
+            {pdfMenuOpen && (
+              <div
+                className="absolute right-0 top-full mt-1 z-50 rounded-lg border overflow-hidden animate-scale-in"
+                style={{
+                  background: 'hsl(var(--card))',
+                  boxShadow: 'var(--shadow-lg)',
+                  minWidth: '11rem',
+                }}
+              >
+                <button
+                  onClick={handlePrintFull}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-left hover:bg-secondary transition-colors"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>{t.exportPdfFull}</span>
+                </button>
+                <div className="h-px bg-border mx-2" />
+                <button
+                  onClick={handlePrintCurrentPage}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-left hover:bg-secondary transition-colors"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span>{t.exportPdfPage}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => setMode(mode === 'edit' ? 'session' : 'edit')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${

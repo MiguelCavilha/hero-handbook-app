@@ -2,6 +2,7 @@ import type { Character } from '@/lib/types';
 import { ABILITY_NAMES, ABILITY_LABELS, SKILL_LABELS, SKILL_ABILITY_MAP } from '@/lib/types';
 import { abilityModifier, formatModifier, proficiencyBonus, calcSavingThrow, calcSkillBonus, passivePerception, totalLevel, calcSpellSaveDC, calcSpellAttackBonus } from '@/lib/calculations';
 import type { Translations } from '@/lib/i18n/pt';
+import { getCharacterVisual } from '@/lib/character-visual';
 
 interface Props {
   character: Character;
@@ -13,6 +14,7 @@ export function CharacterPrint({ character, t }: Props) {
   const prof = proficiencyBonus(character);
   const dc = calcSpellSaveDC(character);
   const atk = calcSpellAttackBonus(character);
+  const visual = getCharacterVisual(character);
 
   return (
     <div className="print-sheet">
@@ -21,9 +23,9 @@ export function CharacterPrint({ character, t }: Props) {
         {/* Header */}
         <div className="print-header">
           <div className="print-portrait">
-            {character.portrait?.startsWith('data:')
-              ? <img src={character.portrait} alt="" />
-              : <span className="print-portrait-placeholder">🐉</span>}
+            {visual === null
+              ? <img src={character.portrait!} alt="" />
+              : <span className="print-portrait-placeholder">{visual.emoji}</span>}
           </div>
           <div className="print-identity">
             <h1 className="print-name">{character.name}</h1>
@@ -165,78 +167,90 @@ export function CharacterPrint({ character, t }: Props) {
       {/* ── PAGE 2: Spells + Inventory + Features ── */}
       <div className="print-page">
         {/* Spellcasting */}
-        {character.spellcastingAbility && (
-          <>
-            <h3 className="print-section-title">{t.spellcasting}</h3>
-            <div className="print-combat-row" style={{ marginBottom: '0.5rem' }}>
-              <div className="print-combat-stat">
-                <div className="print-combat-value">{ABILITY_LABELS[character.spellcastingAbility]}</div>
-                <div className="print-combat-label">{t.ability}</div>
-              </div>
-              <div className="print-combat-stat">
-                <div className="print-combat-value">{dc}</div>
-                <div className="print-combat-label">{t.saveDC}</div>
-              </div>
-              <div className="print-combat-stat">
-                <div className="print-combat-value">{formatModifier(atk)}</div>
-                <div className="print-combat-label">{t.attackBonus}</div>
-              </div>
-            </div>
-
-            {/* Spell slots */}
-            {Object.keys(character.spellSlots).length > 0 && (
-              <div className="print-slot-row">
-                {Object.entries(character.spellSlots).sort(([a],[b]) => Number(a)-Number(b)).map(([lvl, slot]) => (
-                  <div key={lvl} className="print-slot">
-                    <div className="print-slot-label">{t.spellLevel(Number(lvl))}</div>
-                    <div className="print-slot-value">{slot.max - slot.used}/{slot.max}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Spells by level */}
-            {[0,1,2,3,4,5,6,7,8,9].map(lvl => {
-              const spells = character.spells.filter(s => s.level === lvl);
-              if (spells.length === 0) return null;
-              return (
-                <div key={lvl} style={{ marginBottom: '0.5rem' }}>
-                  <h4 className="print-subsection-title">{lvl === 0 ? t.cantrips : t.spellLevel(lvl)}</h4>
-                  <div className="print-spell-list">
-                    {spells.map(s => (
-                      <div key={s.id} className="print-spell-row">
-                        <span className={`print-dot ${s.isPrepared ? 'filled' : ''}`} />
-                        <span className="print-spell-name">{s.name}</span>
-                        <span className="print-spell-meta">{s.school} · {s.castingTime} · {s.range}</span>
-                      </div>
-                    ))}
-                  </div>
+        <section>
+          <h3 className="print-section-title">{t.spellcasting}</h3>
+          {character.spellcastingAbility ? (
+            <>
+              <div className="print-combat-row" style={{ marginBottom: '0.5rem' }}>
+                <div className="print-combat-stat">
+                  <div className="print-combat-value">{ABILITY_LABELS[character.spellcastingAbility]}</div>
+                  <div className="print-combat-label">{t.ability}</div>
                 </div>
-              );
-            })}
-            <div className="print-divider" />
-          </>
-        )}
+                <div className="print-combat-stat">
+                  <div className="print-combat-value">{dc}</div>
+                  <div className="print-combat-label">{t.saveDC}</div>
+                </div>
+                <div className="print-combat-stat">
+                  <div className="print-combat-value">{formatModifier(atk)}</div>
+                  <div className="print-combat-label">{t.attackBonus}</div>
+                </div>
+              </div>
+
+              {/* Spell slots */}
+              {Object.keys(character.spellSlots).length > 0 && (
+                <div className="print-slot-row">
+                  {Object.entries(character.spellSlots).sort(([a],[b]) => Number(a)-Number(b)).map(([lvl, slot]) => (
+                    <div key={lvl} className="print-slot">
+                      <div className="print-slot-label">{t.spellLevel(Number(lvl))}</div>
+                      <div className="print-slot-value">{slot.max - slot.used}/{slot.max}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Spells by level */}
+              {[0,1,2,3,4,5,6,7,8,9].map(lvl => {
+                const spells = character.spells.filter(s => s.level === lvl);
+                if (spells.length === 0) return null;
+                return (
+                  <div key={lvl} style={{ marginBottom: '0.5rem' }}>
+                    <h4 className="print-subsection-title">{lvl === 0 ? t.cantrips : t.spellLevel(lvl)}</h4>
+                    <div className="print-spell-list">
+                      {spells.map(s => (
+                        <div key={s.id} className="print-spell-row">
+                          <span className={`print-dot ${s.isPrepared ? 'filled' : ''}`} />
+                          <div>
+                            <span className="print-spell-name">{s.name}</span>
+                            <span className="print-spell-meta">{s.school} · {s.castingTime} · {s.range}</span>
+                            {s.description && <div className="print-spell-description">{s.description}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">{t.noSpellcasting}</p>
+          )}
+        </section>
+
+        <div className="print-divider" />
 
         {/* Inventory */}
-        {character.inventory.length > 0 && (
-          <>
-            <h3 className="print-section-title">{t.currency}: CP {character.currency.cp} · SP {character.currency.sp} · GP {character.currency.gp} · PP {character.currency.pp}</h3>
+        <section>
+          <h3 className="print-section-title">{t.currency}: {character.currency.cp} cp · {character.currency.sp} sp · {character.currency.ep} ep · {character.currency.gp} gp · {character.currency.pp} pp</h3>
+          {character.inventory.length > 0 ? (
             <table className="print-table">
-              <thead><tr><th>{t.itemName}</th><th>{t.quantity}</th><th>{t.weight}</th></tr></thead>
+              <thead><tr><th>{t.itemName}</th><th>{t.quantity}</th><th>{t.weight}</th><th>{t.description}</th></tr></thead>
               <tbody>
                 {character.inventory.map(item => (
                   <tr key={item.id}>
                     <td>{item.name}{item.isMagical ? ' ✦' : ''}{item.isEquipped ? ' ●' : ''}</td>
                     <td>{item.quantity}</td>
                     <td>{item.weight > 0 ? `${item.weight} lb` : '—'}</td>
+                    <td>{item.description || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="print-divider" />
-          </>
-        )}
+          ) : (
+            <p className="text-muted-foreground text-sm">{t.noItems}</p>
+          )}
+        </section>
+
+        <div className="print-divider" />
 
         {/* Features */}
         {character.features.length > 0 && (

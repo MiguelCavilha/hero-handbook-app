@@ -146,6 +146,7 @@ export const pt = {
   range: 'Alcance',
   description: 'Descrição...',
   removeSlot: 'remover',
+  noSpellcasting: 'Este personagem não possui habilidade de lançamento de magias.',
 
   // Inventory Tab
   currency: 'Moedas',
@@ -216,6 +217,19 @@ export const pt = {
   addMulticlass: '+ Adicionar multiclasse',
   classLabel: 'Classe',
   levelLabel: 'Nível',
+  unlockedAtLevel: 'Desbloqueia no nível {level}',
+  levelProgression: 'Nível & XP',
+  totalLevel: 'Nível Total',
+  xpCurrent: 'XP Atual',
+  xpNextLevel: 'XP para Próximo Nível',
+  xpRemaining: 'XP restante',
+  levelUpClass: 'Classe a Subir',
+  levelUpButton: 'Subir de Nível',
+  levelUpDisabled: 'Necessita mais XP para subir de nível',
+  levelUpMax: 'Nível máximo atingido',
+  levelUpNoClass: 'Nenhuma classe selecionada para subir de nível',
+  levelUpNeedXp: 'Necessita {xp} XP para subir de nível',
+  unnamedClass: 'Classe sem nome',
 
   // Notes Tab
   quickNotes: 'Notas Rápidas',
@@ -250,6 +264,8 @@ export const pt = {
   language: 'Idioma',
   langPT: 'Português',
   langEN: 'English',
+  exportPdfFull: 'Exportar ficha completa (PDF)',
+  exportPdfPage: 'Exportar página atual (PDF)',
 } as const;
 
 export type Translations = typeof pt;

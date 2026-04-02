@@ -12,6 +12,8 @@ interface Props {
 export function InventoryTab({ character, updateCharacter, mode }: Props) {
   const { t } = useI18n();
   const [showAddItem, setShowAddItem] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<Omit<InventoryItem, 'id'>>({ name: '', quantity: 1, weight: 0, description: '', isEquipped: false, isAttuned: false, isMagical: false, isFavorite: false });
 
   const addItem = (item: Omit<InventoryItem, 'id'>) => {
     updateCharacter(prev => ({ ...prev, inventory: [...prev.inventory, { ...item, id: crypto.randomUUID() }] }));
@@ -48,22 +50,44 @@ export function InventoryTab({ character, updateCharacter, mode }: Props) {
           </div>
         ) : (
           <div className="space-y-1">
-            {character.inventory.map(item => (
-              <div key={item.id} className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-card">
-                <button onClick={() => updateItem(item.id, { isEquipped: !item.isEquipped })}
-                  className={`w-3 h-3 rounded-sm border-2 shrink-0 ${item.isEquipped ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {item.name}
-                    {item.isMagical && <span className="text-gold ml-1">✦</span>}
-                    {item.quantity > 1 && <span className="text-muted-foreground ml-1">×{item.quantity}</span>}
-                  </p>
-                  {item.description && <p className="text-xs text-muted-foreground truncate">{item.description}</p>}
+            {character.inventory.map(item => {
+              const isEditing = editingItemId === item.id;
+              return isEditing ? (
+                <div key={item.id} className="border rounded-lg p-2 bg-card">
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input value={editingItem.name} onChange={e => setEditingItem(prev => ({ ...prev, name: e.target.value }))} placeholder={t.itemName} className="input-base" />
+                    <input type="number" value={editingItem.quantity} onChange={e => setEditingItem(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))} placeholder={t.quantity} className="input-base" />
+                    <input type="number" step="0.1" value={editingItem.weight} onChange={e => setEditingItem(prev => ({ ...prev, weight: Math.max(0, parseFloat(e.target.value) || 0) }))} placeholder={t.weight} className="input-base" />
+                    <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={editingItem.isMagical} onChange={e => setEditingItem(prev => ({ ...prev, isMagical: e.target.checked }))} /> {t.magical}</label>
+                  </div>
+                  <textarea value={editingItem.description} onChange={e => setEditingItem(prev => ({ ...prev, description: e.target.value }))} placeholder={t.itemDescription} className="w-full px-2 py-1 text-sm border rounded bg-background" />
+                  <div className="flex gap-2 justify-end mt-2">
+                    <button onClick={() => setEditingItemId(null)} className="px-2 py-1 text-xs rounded bg-secondary">{t.cancel}</button>
+                    <button onClick={() => { updateItem(item.id, editingItem); setEditingItemId(null); }} className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{t.save}</button>
+                  </div>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">{item.weight > 0 ? `${item.weight} lb` : ''}</span>
-                {mode === 'edit' && <button onClick={() => removeItem(item.id)} className="p-1 rounded hover:bg-secondary"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>}
-              </div>
-            ))}
+              ) : (
+                <div key={item.id} className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-card">
+                  <button onClick={() => updateItem(item.id, { isEquipped: !item.isEquipped })}
+                    className={`w-3 h-3 rounded-sm border-2 shrink-0 ${item.isEquipped ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {item.name}
+                      {item.isMagical && <span className="text-gold ml-1">✦</span>}
+                      {item.quantity > 1 && <span className="text-muted-foreground ml-1">×{item.quantity}</span>}
+                    </p>
+                    {item.description && <p className="text-xs text-muted-foreground truncate">{item.description}</p>}
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">{item.weight > 0 ? `${item.weight} lb` : ''}</span>
+                  {mode === 'edit' && (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => { setEditingItemId(item.id); setEditingItem({ name: item.name, quantity: item.quantity, weight: item.weight, description: item.description, isEquipped: item.isEquipped, isAttuned: item.isAttuned, isMagical: item.isMagical, isFavorite: item.isFavorite }); }} className="p-1 rounded hover:bg-secondary"><span className="text-xs">✎</span></button>
+                      <button onClick={() => removeItem(item.id)} className="p-1 rounded hover:bg-secondary"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
         {showAddItem && <ItemForm onAdd={addItem} onCancel={() => setShowAddItem(false)} t={t} />}

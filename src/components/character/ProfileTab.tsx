@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Character, AppMode } from '@/lib/types';
 import { SRD_RACES, SRD_CLASSES, SRD_BACKGROUNDS, SRD_ALIGNMENTS } from '@/lib/srd-data';
 import { Camera } from 'lucide-react';
 import { usePortraitUpload } from '@/hooks/usePortraitUpload';
 import { useI18n } from '@/lib/i18n';
+import { totalLevel, getXpForLevel, xpToNextLevel, getNextLevelFromXp, applyAutoCalculations } from '@/lib/calculations';
 
 interface Props {
   character: Character;
@@ -13,7 +14,30 @@ interface Props {
 
 export function ProfileTab({ character, updateCharacter, mode }: Props) {
   const { t } = useI18n();
+  const [levelUpClassIndex, setLevelUpClassIndex] = useState(0);
   const { handleUpload } = usePortraitUpload(character.id, updateCharacter);
+  const currentTotalLevel = totalLevel(character);
+  const currentXp = character.experience;
+  const currentLevelFromXp = getNextLevelFromXp(currentXp);
+  const nextLevelXp = getXpForLevel(currentLevelFromXp + 1);
+  const xpUntilNextLevel = xpToNextLevel(currentXp);
+
+  // Validate subclasses: clear invalid ones
+  useEffect(() => {
+    let needsUpdate = false;
+    const updatedClasses = character.classes.map(cls => {
+      const classData = SRD_CLASSES.find(c => c.name === cls.name);
+      const validSubclass = classData?.subclasses?.some(sub => sub.name === cls.subclass && cls.level >= (sub.minLevel ?? 3));
+      if (cls.subclass && !validSubclass) {
+        needsUpdate = true;
+        return { ...cls, subclass: '' };
+      }
+      return cls;
+    });
+    if (needsUpdate) {
+      updateCharacter({ classes: updatedClasses });
+    }
+  }, [character.classes, updateCharacter]);
 
   if (mode === 'session') {
     return (
@@ -71,22 +95,101 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
 
       <section>
         <h3 className="section-title">{t.classLabel}</h3>
-        {character.classes.map((cls, i) => (
-          <div key={i} className="grid grid-cols-3 gap-2 mb-2">
-            <SelectField label={t.classLabel} value={cls.name} onChange={name => {
-              const classData = SRD_CLASSES.find(c => c.name === name);
-              updateCharacter(prev => ({ ...prev, classes: prev.classes.map((c, j) => j === i ? { ...c, name, hitDieSize: classData?.hitDie ?? c.hitDieSize } : c) }));
-            }} options={SRD_CLASSES.map(c => c.name)} allowCustom />
-            <Field label={t.subclass} value={cls.subclass} onChange={subclass => updateCharacter(prev => ({ ...prev, classes: prev.classes.map((c, j) => j === i ? { ...c, subclass } : c) }))} />
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t.levelLabel}</label>
-              <input type="number" value={cls.level} min={1} max={20}
-                onChange={e => updateCharacter(prev => ({ ...prev, classes: prev.classes.map((c, j) => j === i ? { ...c, level: parseInt(e.target.value) || 1 } : c) }))}
-                className="w-full px-2 py-1.5 text-sm border rounded bg-background" />
+        {character.classes.map((cls, i) => {
+          const classData = SRD_CLASSES.find(c => c.name === cls.name);
+          return (
+            <div key={i} className="grid grid-cols-3 gap-2 mb-2">
+              <SelectField label={t.classLabel} value={cls.name} onChange={name => {
+                const selected = SRD_CLASSES.find(c => c.name === name);
+                updateCharacter(prev => ({
+                  ...prev,
+                  classes: prev.classes.map((c, j) => j === i ? { ...c, name, hitDieSize: selected?.hitDie ?? c.hitDieSize, subclass: '' } : c),
+                }));
+              }} options={SRD_CLASSES.map(c => c.name)} allowCustom />
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t.subclass}</label>
+                <select
+                  value={cls.subclass}
+                  onChange={e => updateCharacter(prev => ({
+                    ...prev,
+                    classes: prev.classes.map((c, j) => j === i ? { ...c, subclass: e.target.value } : c),
+                  }))}
+                  className="w-full px-2 py-1.5 text-sm border rounded bg-background"
+                >
+                  <option value="">{t.selectOption}</option>
+                  {classData?.subclasses?.map(sub => {
+                    const locked = cls.level < (sub.minLevel ?? 3);
+                    return (
+                      <option key={sub.name} value={sub.name} disabled={locked}>
+                        {sub.name}{locked ? ` (${t.unlockedAtLevel.replace('{level}', String(sub.minLevel ?? 3))})` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                {!classData?.subclasses?.length && (
+                  <Field label={t.subclass} value={cls.subclass} onChange={subclass => updateCharacter(prev => ({ ...prev, classes: prev.classes.map((c, j) => j === i ? { ...c, subclass } : c) }))} />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t.levelLabel}</label>
+                <input type="number" value={cls.level} min={1} max={20}
+                  onChange={e => updateCharacter(prev => ({ ...prev, classes: prev.classes.map((c, j) => j === i ? { ...c, level: Math.max(1, Math.min(20, parseInt(e.target.value) || 1)) } : c) }))}
+                  className="w-full px-2 py-1.5 text-sm border rounded bg-background" />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <button onClick={() => updateCharacter(prev => ({ ...prev, classes: [...prev.classes, { name: '', subclass: '', level: 1, hitDieSize: 8, hitDiceUsed: 0 }] }))} className="text-xs text-primary hover:underline">{t.addMulticlass}</button>
+      </section>
+
+      <section>
+        <h3 className="section-title">{t.levelProgression}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-secondary/20 p-3 rounded">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.totalLevel}</p>
+            <p className="text-xl font-bold">{currentTotalLevel}</p>
+            <p className="text-xs text-muted-foreground">{t.xpCurrent}: {currentXp}</p>
+            <p className="text-xs text-muted-foreground">{t.xpNextLevel}: {nextLevelXp} ({xpUntilNextLevel} {t.xpRemaining})</p>
+          </div>
+
+          <div className="space-y-2">
+            <SelectField
+              label={t.levelUpClass}
+              value={String(levelUpClassIndex)}
+              onChange={v => setLevelUpClassIndex(Number.isNaN(parseInt(v)) ? 0 : parseInt(v))}
+              options={character.classes.map((cls, idx) => ({ value: String(idx), label: `${cls.name || t.unnamedClass} ${cls.level}` }))}
+              allowCustom={false}
+            />
+            <button
+              onClick={() => {
+                const idx = Math.min(Math.max(0, levelUpClassIndex), character.classes.length - 1);
+                if (idx < 0 || idx >= character.classes.length) return;
+                if (currentTotalLevel >= 20 || xpUntilNextLevel > 0 || !character.classes.length) return;
+
+                updateCharacter(prev => {
+                  const classes = prev.classes.map((c, i) => i === idx ? { ...c, level: Math.min(20, c.level + 1) } : c);
+                  const updated = { ...prev, classes, experience: Math.max(0, prev.experience - xpUntilNextLevel) };
+                  return applyAutoCalculations(updated);
+                });
+              }}
+              className="px-3 py-1.5 rounded text-sm bg-primary text-white hover:bg-primary/90"
+              disabled={currentTotalLevel >= 20 || xpUntilNextLevel > 0 || !character.classes.length}
+            >
+              {t.levelUpButton}
+            </button>
+            {currentTotalLevel >= 20 && (
+              <p className="text-xs text-muted-foreground">{t.levelUpMax}</p>
+            )}
+            {character.classes.length === 0 && (
+              <p className="text-xs text-muted-foreground">{t.levelUpNoClass}</p>
+            )}
+            {xpUntilNextLevel > 0 && (
+              <p className="text-xs text-muted-foreground">{t.levelUpNeedXp.replace('{xp}', String(xpUntilNextLevel))}</p>
+            )}
+          </div>
+        </div>
       </section>
 
       <section>
@@ -143,7 +246,9 @@ function FieldArea({ label, value, onChange, rows = 3 }: { label: string; value:
   );
 }
 
-function SelectField({ label, value, onChange, options, allowCustom, placeholder }: { label: string; value: string; onChange: (v: string) => void; options: string[]; allowCustom?: boolean; placeholder?: string }) {
+type SelectOption = string | { value: string; label: string };
+
+function SelectField({ label, value, onChange, options, allowCustom, placeholder }: { label: string; value: string; onChange: (v: string) => void; options: SelectOption[]; allowCustom?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{label}</label>
@@ -152,10 +257,20 @@ function SelectField({ label, value, onChange, options, allowCustom, placeholder
       ) : (
         <select value={value} onChange={e => onChange(e.target.value)} className="w-full px-2 py-1.5 text-sm border rounded bg-background">
           <option value="">{placeholder ?? '—'}</option>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
+          {options.map(o => {
+            const current = typeof o === 'string' ? { value: o, label: o } : o;
+            return <option key={current.value} value={current.value}>{current.label}</option>;
+          })}
         </select>
       )}
-      {allowCustom && <datalist id={`${label}-opts`}>{options.map(o => <option key={o} value={o} />)}</datalist>}
+      {allowCustom && (
+        <datalist id={`${label}-opts`}>
+          {options.map(o => {
+            const current = typeof o === 'string' ? o : o.value;
+            return <option key={current} value={current} />;
+          })}
+        </datalist>
+      )}
     </div>
   );
 }

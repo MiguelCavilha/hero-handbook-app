@@ -17,6 +17,10 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
   const [filterLevel, setFilterLevel] = useState<number | null>(null);
   const [showAddSpell, setShowAddSpell] = useState(false);
   const [showAddSlot, setShowAddSlot] = useState(false);
+  const [editingSpellId, setEditingSpellId] = useState<string | null>(null);
+  const [editingSpell, setEditingSpell] = useState<Omit<SpellEntry, 'id'>>({
+    name: '', level: 0, school: '', castingTime: '', range: '', components: '', duration: '', description: '', isPrepared: false, isFavorite: false, isRitual: false, isConcentration: false, source: 'custom',
+  });
 
   const dc = calcSpellSaveDC(character);
   const atk = calcSpellAttackBonus(character);
@@ -139,22 +143,51 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
         <section key={level}>
           <h3 className="section-title">{Number(level) === 0 ? t.cantrips : t.spellLevel(Number(level))}</h3>
           <div className="space-y-1">
-            {spells.map(spell => (
-              <div key={spell.id} className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-card">
-                {spell.level > 0 && (
-                  <button onClick={() => togglePrepared(spell.id)}
-                    className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${spell.isPrepared ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{spell.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {spell.school} · {spell.castingTime} · {spell.range}
-                    {spell.isConcentration && ' · C'}{spell.isRitual && ' · R'}
-                  </p>
+            {spells.map(spell => {
+              const isEditing = editingSpellId === spell.id;
+              return isEditing ? (
+                <div key={spell.id} className="border rounded-lg p-2 bg-card">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                    <input value={editingSpell.name} onChange={e => setEditingSpell(prev => ({ ...prev, name: e.target.value }))} placeholder={t.spellName} className="input-base" />
+                    <select value={editingSpell.level} onChange={e => setEditingSpell(prev => ({ ...prev, level: Number(e.target.value) }))} className="input-base">
+                      {[0,1,2,3,4,5,6,7,8,9].map(l => <option key={l} value={l}>{l === 0 ? t.cantrips : t.spellLevel(l)}</option>)}
+                    </select>
+                    <input value={editingSpell.school} onChange={e => setEditingSpell(prev => ({ ...prev, school: e.target.value }))} placeholder={t.school} className="input-base" />
+                    <input value={editingSpell.castingTime} onChange={e => setEditingSpell(prev => ({ ...prev, castingTime: e.target.value }))} placeholder={t.castingTime} className="input-base" />
+                    <input value={editingSpell.range} onChange={e => setEditingSpell(prev => ({ ...prev, range: e.target.value }))} placeholder={t.range} className="input-base" />
+                  </div>
+                  <textarea value={editingSpell.description} onChange={e => setEditingSpell(prev => ({ ...prev, description: e.target.value }))} placeholder={t.description} className="w-full px-2 py-1 text-sm border rounded bg-background" />
+                  <div className="flex gap-2 justify-end mt-2">
+                    <button onClick={() => setEditingSpellId(null)} className="px-2 py-1 text-xs rounded bg-secondary">{t.cancel}</button>
+                    <button onClick={() => { updateCharacter(prev => ({
+                      ...prev,
+                      spells: prev.spells.map(s => s.id === spell.id ? { ...s, ...editingSpell } : s),
+                    })); setEditingSpellId(null); }} className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{t.save}</button>
+                  </div>
                 </div>
-                {mode === 'edit' && <button onClick={() => removeSpell(spell.id)} className="p-1 rounded hover:bg-secondary"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>}
-              </div>
-            ))}
+              ) : (
+                <div key={spell.id} className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-card">
+                  {spell.level > 0 && (
+                    <button onClick={() => togglePrepared(spell.id)}
+                      className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${spell.isPrepared ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{spell.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {spell.school} · {spell.castingTime} · {spell.range}
+                      {spell.isConcentration && ' · C'}{spell.isRitual && ' · R'}
+                    </p>
+                    {spell.description && <p className="text-xs text-muted-foreground truncate">{spell.description}</p>}
+                  </div>
+                  {mode === 'edit' && (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => { setEditingSpellId(spell.id); setEditingSpell({ ...spell }); }} className="p-1 rounded hover:bg-secondary"><span className="text-xs">✎</span></button>
+                      <button onClick={() => removeSpell(spell.id)} className="p-1 rounded hover:bg-secondary"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       ))}

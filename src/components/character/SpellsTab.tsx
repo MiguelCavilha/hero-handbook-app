@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Character, AppMode, SpellEntry } from '@/lib/types';
 import { calcSpellSaveDC, calcSpellAttackBonus, formatModifier } from '@/lib/calculations';
 import { ABILITY_LABELS, ABILITY_NAMES } from '@/lib/types';
 import { useI18n } from '@/lib/i18n';
 import { translateApiTerm } from '@/lib/i18n/api-translation';
 import { Plus, Trash2, Search } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { SRD_CLASSES } from '@/lib/srd-data';
+import { fetchClassSpells, fetchSpellDetails, normalizeDndSpellDetail } from '@/lib/dnd5e-api';
 
 interface Props {
   character: Character;
@@ -21,6 +24,52 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
   const [editingSpellId, setEditingSpellId] = useState<string | null>(null);
   const [editingSpell, setEditingSpell] = useState<Omit<SpellEntry, 'id'>>({
     name: '', level: 0, school: '', castingTime: '', range: '', components: '', duration: '', description: '', isPrepared: false, isFavorite: false, isRitual: false, isConcentration: false, source: 'custom',
+  });
+
+  const spellcastingClasses = character.classes
+    .map(cls => SRD_CLASSES.find(c => c.name === cls.name))
+    .filter((c): c is (typeof SRD_CLASSES)[number] => Boolean(c && c.spellcaster));
+
+  const [selectedSpellClassName, setSelectedSpellClassName] = useState(spellcastingClasses[0]?.name ?? '');
+  const [selectedSpellIndex, setSelectedSpellIndex] = useState('');
+  const [spellListFilter, setSpellListFilter] = useState('');
+
+  useEffect(() => {
+    if (spellcastingClasses.length === 0) {
+      setSelectedSpellClassName('');
+      setSelectedSpellIndex('');
+      return;
+    }
+
+    if (!selectedSpellClassName || !spellcastingClasses.some(cls => cls.name === selectedSpellClassName)) {
+      setSelectedSpellClassName(spellcastingClasses[0].name);
+      setSelectedSpellIndex('');
+    }
+  }, [spellcastingClasses, selectedSpellClassName]);
+
+  const selectedClassName = selectedSpellClassName || spellcastingClasses[0]?.name || '';
+
+  const classSpellListQuery = useQuery({
+    queryKey: ['classSpells', selectedClassName],
+    queryFn: () => fetchClassSpells(selectedClassName),
+    enabled: selectedClassName !== '',
+  });
+
+  const availableClassSpells = classSpellListQuery.data?.filter(spell => spell.name.toLowerCase().includes(spellListFilter.toLowerCase())) ?? [];
+
+  useEffect(() => {
+    if (!selectedSpellIndex && availableClassSpells.length > 0) {
+      setSelectedSpellIndex(availableClassSpells[0].index);
+    }
+    if (selectedSpellIndex && !availableClassSpells.some(spell => spell.index === selectedSpellIndex)) {
+      setSelectedSpellIndex(availableClassSpells[0]?.index ?? '');
+    }
+  }, [availableClassSpells, selectedSpellIndex]);
+
+  const selectedSpellDetailQuery = useQuery({
+    queryKey: ['spellDetail', selectedSpellIndex],
+    queryFn: () => fetchSpellDetails(selectedSpellIndex),
+    enabled: selectedSpellIndex !== '',
   });
 
   const dc = calcSpellSaveDC(character);
@@ -94,6 +143,58 @@ export function SpellsTab({ character, updateCharacter, mode }: Props) {
           )}
         </div>
       </section>
+
+      {spellcastingClasses.length > 0 && mode === 'edit' && (
+        <section>
+          <h3 className="section-title">{t.classSpells}</h3>
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">{t.spellcastingClass}</label>
+              <select value={selectedClassName} onChange={e => setSelectedSpellClassName(e.target.value)} className="block w-full px-2 py-1 text-sm border rounded bg-background mt-0.5">
+                {spellcastingClasses.map(cls => <option key={cls.name} value={cls.name}>{translateApiTerm(t, 'classes', cls.name)}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">{t.searchSpells}</label>
+              <input value={spellListFilter} onChange={e => setSpellListFilter(e.target.value)} placeholder={t.searchClassSpells} className="w-full px-2 py-1 text-sm border rounded bg-background" />
+            </div>
+          </div>
+          <div className="mt-3 space-y-3">
+            {classSpellListQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">{t.loading}</p>
+            ) : classSpellListQuery.isError ? (
+              <p className="text-sm text-destructive">{t.failedToLoadClassSpells}</p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <select value={selectedSpellIndex} onChange={e => setSelectedSpellIndex(e.target.value)} className="block w-full px-2 py-1 text-sm border rounded bg-background">
+                  {availableClassSpells.map(spell => (
+                    <option key={spell.index} value={spell.index}>{spell.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => {
+                    if (selectedSpellIndex && selectedSpellDetailQuery.data) {
+                      addSpell(normalizeDndSpellDetail(selectedSpellDetailQuery.data));
+                      setSelectedSpellIndex('');
+                    }
+                  }}
+                  disabled={!selectedSpellIndex || !selectedSpellDetailQuery.data || selectedSpellDetailQuery.isFetching}
+                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50"
+                >
+                  + {t.addSpell}
+                </button>
+              </div>
+            )}
+            {selectedSpellDetailQuery.data && (
+              <div className="border rounded-lg p-3 bg-card text-sm text-muted-foreground">
+                <p className="font-semibold">{selectedSpellDetailQuery.data.name}</p>
+                <p>{selectedSpellDetailQuery.data.level === 0 ? t.cantrips : t.spellLevel(selectedSpellDetailQuery.data.level)}</p>
+                <p>{translateApiTerm(t, 'schools', selectedSpellDetailQuery.data.school.name)} · {selectedSpellDetailQuery.data.casting_time}</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {(Object.keys(character.spellSlots).length > 0 || mode === 'edit') && (
         <section>

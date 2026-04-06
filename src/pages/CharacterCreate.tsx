@@ -5,6 +5,7 @@ import { translateApiTerm } from '@/lib/i18n/api-translation';
 import { createDefaultCharacter } from '@/lib/character-factory';
 import { saveCharacter } from '@/lib/db';
 import { SRD_RACES, SRD_CLASSES, SRD_BACKGROUNDS, SRD_ALIGNMENTS } from '@/lib/srd-data';
+import { randomArrayItem } from '@/lib/utils';
 import type { AbilityName, AbilityScores } from '@/lib/types';
 import { ABILITY_LABELS, ABILITY_NAMES } from '@/lib/types';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
@@ -109,7 +110,7 @@ export default function CharacterCreate() {
 
         {step === 1 && (
           <>
-            <FieldGroup label={t.race}>
+            <FieldGroup label={t.race} action={<button type="button" className="text-xs text-primary hover:underline" onClick={() => { const random = randomArrayItem(SRD_RACES); setRace(random.name); setSubrace(''); }}>{t.randomize}</button>}>
               <select value={race} onChange={e => { setRace(e.target.value); setSubrace(''); }}
                 className="input-base" required>
                 <option value="">{t.selectRace}</option>
@@ -126,7 +127,7 @@ export default function CharacterCreate() {
                 </select>
               </FieldGroup>
             )}
-            <FieldGroup label={t.class}>
+            <FieldGroup label={t.class} action={<button type="button" className="text-xs text-primary hover:underline" onClick={() => { const random = randomArrayItem(SRD_CLASSES); setClassName(random.name); setSubclass(''); }}>{t.randomize}</button>}>
               <select value={className} onChange={e => { setClassName(e.target.value); setSubclass(''); }}
                 className="input-base" required>
                 <option value="">{t.selectClass}</option>
@@ -153,7 +154,7 @@ export default function CharacterCreate() {
                 ))}
               </select>
             </FieldGroup>
-            <FieldGroup label={t.alignment}>
+            <FieldGroup label={t.alignment} action={<button type="button" className="text-xs text-primary hover:underline" onClick={() => { setAlignment(randomArrayItem(SRD_ALIGNMENTS)); }}>{t.randomize}</button>}>
               <select value={alignment} onChange={e => setAlignment(e.target.value)} className="input-base">
                 <option value="">{t.selectAlignment}</option>
                 {SRD_ALIGNMENTS.map(a => (
@@ -244,12 +245,15 @@ export default function CharacterCreate() {
   );
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, children, action }: { label: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
-        {label}
-      </label>
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <label className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </label>
+        {action}
+      </div>
       {children}
     </div>
   );

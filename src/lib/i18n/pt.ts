@@ -229,6 +229,12 @@ export const pt = {
   levelUpMax: 'Nível máximo atingido',
   levelUpNoClass: 'Nenhuma classe selecionada para subir de nível',
   levelUpNeedXp: 'Necessita {xp} XP para subir de nível',
+  levelUpAlreadyClaimed: 'Já reivindicado o nível {level} para {class}. Ganhe mais XP para conquistar o próximo nível.',
+  levelUpReadyToClaim: '✓ Pronto para reivindicar o nível {nextLevel}! Você já conquistou o nível {earnedLevel}.',
+  levelUpAlreadyClaimedTooltip: 'Já reivindicado este nível',
+  levelUpNeedMoreXpTooltip: 'Ganhe mais XP para subir de nível',
+  selectClass: 'Selecione uma classe',
+  randomize: 'Aleatório',
   unnamedClass: 'Classe sem nome',
 
   // Notes Tab

@@ -134,7 +134,7 @@ export function CharacterHeader({ character, updateCharacter, mode }: Props) {
         </div>
         <div className="quick-stat">
           <span className="stat-label">Speed</span>
-          <span className="text-lg font-bold leading-none mt-1">{character.speed}</span>
+          <span className="text-lg font-bold leading-none mt-1">{character.speed} ft</span>
         </div>
         {character.hpTemp > 0 && (
           <div className="quick-stat" style={{ borderColor: 'hsl(var(--arcane) / 0.4)' }}>

@@ -6,6 +6,7 @@ import { Camera } from 'lucide-react';
 import { usePortraitUpload } from '@/hooks/usePortraitUpload';
 import { useI18n } from '@/lib/i18n';
 import { totalLevel, getXpForLevel, xpToNextLevel, getNextLevelFromXp, applyAutoCalculations } from '@/lib/calculations';
+import { randomArrayItem } from '@/lib/utils';
 
 interface Props {
   character: Character;
@@ -19,6 +20,16 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
   const { handleUpload } = usePortraitUpload(character.id, updateCharacter);
   const currentTotalLevel = totalLevel(character);
   const currentXp = character.experience;
+  
+  const randomRace = () => updateCharacter({ race: randomArrayItem(SRD_RACES).name, subrace: '' });
+  const randomAlignment = () => updateCharacter({ alignment: randomArrayItem(SRD_ALIGNMENTS) });
+  const randomClass = (index: number) => {
+    const selected = randomArrayItem(SRD_CLASSES);
+    updateCharacter(prev => ({
+      ...prev,
+      classes: prev.classes.map((c, i) => i === index ? { ...c, name: selected.name, hitDieSize: selected.hitDie, subclass: '' } : c),
+    }));
+  };
   
   // Earned level based on XP (what level they SHOULD be at)
   const earnedLevel = getNextLevelFromXp(currentXp);
@@ -105,6 +116,9 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
             onChange={race => updateCharacter({ race })}
             options={SRD_RACES.map(r => ({ value: r.name, label: translateApiTerm(t, 'races', r.name) }))}
             allowCustom
+            action={
+              <button type="button" className="text-xs text-primary hover:underline" onClick={randomRace}>{t.randomize}</button>
+            }
           />
           <Field label={t.subrace} value={character.subrace} onChange={subrace => updateCharacter({ subrace })} />
           <SelectField
@@ -120,6 +134,9 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
             onChange={alignment => updateCharacter({ alignment })}
             options={SRD_ALIGNMENTS.map(a => ({ value: a, label: translateApiTerm(t, 'alignments', a) }))}
             placeholder={t.selectOption}
+            action={
+              <button type="button" className="text-xs text-primary hover:underline" onClick={randomAlignment}>{t.randomize}</button>
+            }
           />
         </div>
       </section>
@@ -142,6 +159,9 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
                 }}
                 options={SRD_CLASSES.map(c => ({ value: c.name, label: translateApiTerm(t, 'classes', c.name) }))}
                 allowCustom
+                action={
+                  <button type="button" className="text-xs text-primary hover:underline" onClick={() => randomClass(i)}>{t.randomize}</button>
+                }
               />
 
               <div>
@@ -231,7 +251,7 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
               }}
               className="px-3 py-1.5 rounded text-sm bg-primary text-white hover:bg-primary/90"
               disabled={!canLevelUp}
-              title={!canLevelUp ? (selectedClass?.level === earnedLevel ? 'Already claimed this level' : earnedLevel <= selectedClass?.level ? 'Gain more XP to level up' : 'Select a class') : ''}
+              title={!canLevelUp ? (selectedClass?.level === earnedLevel ? t.levelUpAlreadyClaimedTooltip : earnedLevel <= selectedClass?.level ? t.levelUpNeedMoreXpTooltip : t.selectClass) : ''}
             >
               {t.levelUpButton}
             </button>
@@ -242,10 +262,18 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
               <p className="text-xs text-muted-foreground">{t.levelUpNoClass}</p>
             )}
             {selectedClass && selectedClass.level === earnedLevel && earnedLevel < 20 && (
-              <p className="text-xs text-muted-foreground">Already claimed level {earnedLevel} for {selectedClass.name}. Gain more XP to earn the next level.</p>
+              <p className="text-xs text-muted-foreground">
+                {t.levelUpAlreadyClaimed
+                  .replace('{level}', String(earnedLevel))
+                  .replace('{class}', translateApiTerm(t, 'classes', selectedClass.name))}
+              </p>
             )}
             {selectedClass && selectedClass.level < earnedLevel && (
-              <p className="text-xs text-muted-foreground">✓ Ready to claim level {selectedClass.level + 1}! You have earned level {earnedLevel}.</p>
+              <p className="text-xs text-muted-foreground">
+                {t.levelUpReadyToClaim
+                  .replace('{nextLevel}', String(selectedClass.level + 1))
+                  .replace('{earnedLevel}', String(earnedLevel))}
+              </p>
             )}
           </div>
         </div>
@@ -307,10 +335,13 @@ function FieldArea({ label, value, onChange, rows = 3 }: { label: string; value:
 
 type SelectOption = string | { value: string; label: string };
 
-function SelectField({ label, value, onChange, options, allowCustom, placeholder }: { label: string; value: string; onChange: (v: string) => void; options: SelectOption[]; allowCustom?: boolean; placeholder?: string }) {
+function SelectField({ label, value, onChange, options, allowCustom, placeholder, action }: { label: string; value: string; onChange: (v: string) => void; options: SelectOption[]; allowCustom?: boolean; placeholder?: string; action?: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{label}</label>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
+        {action}
+      </div>
       {allowCustom ? (
         <input value={value} onChange={e => onChange(e.target.value)} list={`${label}-opts`} className="w-full px-2 py-1.5 text-sm border rounded bg-background" />
       ) : (

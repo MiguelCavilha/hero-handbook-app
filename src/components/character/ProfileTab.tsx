@@ -19,9 +19,21 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
   const { handleUpload } = usePortraitUpload(character.id, updateCharacter);
   const currentTotalLevel = totalLevel(character);
   const currentXp = character.experience;
-  const currentLevelFromXp = getNextLevelFromXp(currentXp);
-  const nextLevelXp = getXpForLevel(currentLevelFromXp + 1);
+  
+  // Earned level based on XP (what level they SHOULD be at)
+  const earnedLevel = getNextLevelFromXp(currentXp);
+  
+  // For UI display purposes (should always be <= earnedLevel)
+  const nextLevelXp = getXpForLevel(earnedLevel + 1);
   const xpUntilNextLevel = xpToNextLevel(currentXp);
+  
+  // Determine if we can level up the selected class
+  const selectedClassIdx = Math.min(Math.max(0, levelUpClassIndex), character.classes.length - 1);
+  const selectedClass = character.classes[selectedClassIdx];
+  const canLevelUp = character.classes.length > 0 
+    && selectedClass 
+    && selectedClass.level < 20 
+    && selectedClass.level < earnedLevel;
 
   // Validate subclasses: clear invalid ones
   useEffect(() => {
@@ -189,29 +201,51 @@ export function ProfileTab({ character, updateCharacter, mode }: Props) {
             />
             <button
               onClick={() => {
-                const idx = Math.min(Math.max(0, levelUpClassIndex), character.classes.length - 1);
-                if (idx < 0 || idx >= character.classes.length) return;
-                if (currentTotalLevel >= 20 || xpUntilNextLevel > 0 || !character.classes.length) return;
+                if (!canLevelUp) return;
+
+                if (selectedClassIdx < 0 || selectedClassIdx >= character.classes.length) {
+                  return;
+                }
 
                 updateCharacter(prev => {
-                  const classes = prev.classes.map((c, i) => i === idx ? { ...c, level: Math.min(20, c.level + 1) } : c);
-                  const updated = { ...prev, classes, experience: Math.max(0, prev.experience - xpUntilNextLevel) };
+                  // Calculate the earned level from CURRENT experience (fresh evaluation)
+                  const freshEarnedLevel = getNextLevelFromXp(prev.experience);
+                  const targetClass = prev.classes[selectedClassIdx];
+
+                  // Safety check: ensure class can be leveled
+                  if (!targetClass || targetClass.level >= 20 || targetClass.level >= freshEarnedLevel) {
+                    return prev;
+                  }
+
+                  // Increment the class level by 1 (don't modify experience - just claim earned levels)
+                  const newLevel = Math.min(20, targetClass.level + 1);
+
+                  const classes = prev.classes.map((c, i) => 
+                    i === selectedClassIdx ? { ...c, level: newLevel } : c
+                  );
+                  const updated = { ...prev, classes };
+                  
+                  // Apply auto-calculations (HP, proficiency bonus, etc.)
                   return applyAutoCalculations(updated);
                 });
               }}
               className="px-3 py-1.5 rounded text-sm bg-primary text-white hover:bg-primary/90"
-              disabled={currentTotalLevel >= 20 || xpUntilNextLevel > 0 || !character.classes.length}
+              disabled={!canLevelUp}
+              title={!canLevelUp ? (selectedClass?.level === earnedLevel ? 'Already claimed this level' : earnedLevel <= selectedClass?.level ? 'Gain more XP to level up' : 'Select a class') : ''}
             >
               {t.levelUpButton}
             </button>
-            {currentTotalLevel >= 20 && (
+            {selectedClass?.level === 20 && (
               <p className="text-xs text-muted-foreground">{t.levelUpMax}</p>
             )}
             {character.classes.length === 0 && (
               <p className="text-xs text-muted-foreground">{t.levelUpNoClass}</p>
             )}
-            {xpUntilNextLevel > 0 && (
-              <p className="text-xs text-muted-foreground">{t.levelUpNeedXp.replace('{xp}', String(xpUntilNextLevel))}</p>
+            {selectedClass && selectedClass.level === earnedLevel && earnedLevel < 20 && (
+              <p className="text-xs text-muted-foreground">Already claimed level {earnedLevel} for {selectedClass.name}. Gain more XP to earn the next level.</p>
+            )}
+            {selectedClass && selectedClass.level < earnedLevel && (
+              <p className="text-xs text-muted-foreground">✓ Ready to claim level {selectedClass.level + 1}! You have earned level {earnedLevel}.</p>
             )}
           </div>
         </div>

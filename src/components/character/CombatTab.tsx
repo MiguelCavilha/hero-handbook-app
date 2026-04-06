@@ -3,6 +3,7 @@ import type { Character, AppMode, Weapon, Resource } from '@/lib/types';
 import { SRD_CONDITIONS } from '@/lib/srd-data';
 import { formatModifier } from '@/lib/calculations';
 import { useI18n } from '@/lib/i18n';
+import { translateApiTerm } from '@/lib/i18n/api-translation';
 import { Plus, Trash2, RotateCcw } from 'lucide-react';
 
 interface Props {

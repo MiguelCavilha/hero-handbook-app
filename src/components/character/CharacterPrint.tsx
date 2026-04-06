@@ -282,9 +282,22 @@ export function CharacterPrint({ character, t }: Props) {
         <div className="print-divider" />
 
         <section>
-          <h3 className="print-section-title">
-            {t.currency}: {character.currency.cp} cp · {character.currency.sp} sp · {character.currency.ep} ep · {character.currency.gp} gp · {character.currency.pp} pp
-          </h3>
+          <h3 className="print-section-title">{t.currency}</h3>
+          <div className="print-currency-grid">
+            {[
+              { key: 'cp', label: 'CP' },
+              { key: 'sp', label: 'SP' },
+              { key: 'ep', label: 'EP' },
+              { key: 'gp', label: 'GP' },
+              { key: 'pp', label: 'PP' },
+            ].map(({ key, label }) => (
+              <div key={key} className="print-currency-box">
+                <div className="print-currency-label">{label}</div>
+                <div className="print-currency-value">{character.currency[key as keyof typeof character.currency]}</div>
+                <div className="print-currency-space"></div>
+              </div>
+            ))}
+          </div>
 
           {character.inventory?.length > 0 ? (
             <table className="print-table">
